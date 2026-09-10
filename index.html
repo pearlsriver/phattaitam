@@ -1,32 +1,305 @@
 <!DOCTYPE html>
-<html lang="vi">
-
-function sayHello() {
-    alert("Xin chào!");
-}
-    
+<html lang="vi" class="scroll-smooth">
 <head>
-    <meta charset="UTF-8">
-
-    <title>Phật Tại Tâm</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phật Tại Tâm — Thư Viện Số & Âm Nhạc</title>
+  <meta name="description" content="A premium digital library, community publishing platform and music hub." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            serif: ['Georgia', 'serif']
+          },
+          boxShadow: {
+            soft: '0 20px 70px rgba(0,0,0,.12)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { scrollbar-width: thin; scrollbar-color: #64748b transparent; }
+    body { transition: background-color .35s ease, color .35s ease; }
+    .glass { background: rgba(255,255,255,.68); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    .dark .glass { background: rgba(15,23,42,.68); }
+    .fade-up { animation: fadeUp .55s ease both; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:none } }
+    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .range-violet { accent-color: #8b5cf6; }
+    .modal-backdrop { background: rgba(2,6,23,.68); backdrop-filter: blur(8px); }
+  </style>
 </head>
 
-<body>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 pb-28">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 border-b border-slate-200/70 dark:border-slate-800/70 glass">
+    <div class="max-w-7xl mx-auto px-5 lg:px-8 h-18 py-4 flex items-center justify-between gap-4">
+      <button onclick="showPage('home')" class="flex items-center gap-3 shrink-0">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-emerald-400 text-white grid place-items-center font-black shadow-lg">P</div>
+        <div class="hidden sm:block text-left">
+          <div class="font-bold tracking-tight">Phat Tai Tam</div>
+          <div class="text-[10px] uppercase tracking-[.22em] text-slate-500">Digital Library</div>
+        </div>
+      </button>
 
-    <h1>Phật Tại Tâm</h1>
+      <nav class="hidden md:flex items-center gap-1">
+        <button onclick="showPage('home')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800">Home</button>
+        <button onclick="showPage('library')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800">Library</button>
+        <button onclick="showPage('music')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800">Music</button>
+        <button onclick="showPage('community')" class="nav-btn px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800">Community</button>
+        <button id="creatorNav" onclick="showPage('creator')" class="hidden px-4 py-2 rounded-xl text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40">Creator</button>
+      </nav>
 
-    <p>
-        Thư viện sách, âm nhạc và những câu chuyện.
-    </p>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 grid place-items-center hover:bg-slate-100 dark:hover:bg-slate-800" title="Toggle theme">
+          <span id="themeIcon">☾</span>
+        </button>
+        <div id="authArea"></div>
+      </div>
+    </div>
+  </header>
 
-    <button>
-        Khám phá thư viện
-    </button>
+  <main id="app" class="max-w-7xl mx-auto px-5 lg:px-8 py-8"></main>
 
-    <button onclick="sayHello()">
-    Click me
-    </button>
-    
+  <!-- Persistent Player -->
+  <section id="player" class="fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 dark:border-slate-800 glass shadow-2xl">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center gap-3">
+        <img id="playerArt" src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=200&auto=format&fit=crop" class="w-12 h-12 rounded-xl object-cover hidden sm:block" />
+        <div class="min-w-0 w-36 sm:w-56">
+          <div id="playerTitle" class="font-semibold text-sm truncate">Quiet Pages</div>
+          <div id="playerArtist" class="text-xs text-slate-500 truncate">Phat Tai Tam Sessions</div>
+        </div>
+        <button onclick="togglePlay()" id="playBtn" class="w-10 h-10 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 grid place-items-center">▶</button>
+        <button onclick="nextTrack()" class="hidden sm:block text-lg px-2">⏭</button>
+        <div class="flex-1 hidden sm:flex items-center gap-3">
+          <span class="text-[11px] text-slate-500" id="currentTime">0:00</span>
+          <input id="progress" type="range" min="0" max="100" value="0" class="range-violet flex-1" oninput="seekAudio(this.value)" />
+          <span class="text-[11px] text-slate-500" id="duration">0:00</span>
+        </div>
+        <button onclick="toggleQueue()" class="hidden md:block px-2 text-lg">☷</button>
+        <button onclick="toggleMute()" class="hidden sm:block px-2 text-lg">🔊</button>
+        <input id="volume" type="range" min="0" max="1" step=".01" value=".8" class="hidden lg:block w-20 range-violet" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 z-[60] modal-backdrop p-4 md:p-8">
+    <div id="modalContent" class="max-w-4xl max-h-[90vh] overflow-auto mx-auto mt-4 md:mt-10 bg-white dark:bg-slate-900 rounded-3xl shadow-soft border border-white/30 dark:border-slate-700"></div>
+  </div>
+
+  <audio id="audio"></audio>
+
+<script>
+const books = [
+  {id:1,title:"The Wind-Up Bird Chronicle",author:"Haruki Murakami",category:"Fiction",rating:4.8,status:"Available",cover:"https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop",preview:"A mysterious telephone call pulls Toru Okada into a strange journey through memory, identity and the hidden layers of ordinary life."},
+  {id:2,title:"The Creative Act",author:"Rick Rubin",category:"Non-Fiction",rating:4.7,status:"Available",cover:"https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=800&auto=format&fit=crop",preview:"Creativity is not a rare gift reserved for artists. It is a way of seeing, noticing and responding to the world."},
+  {id:3,title:"Dune",author:"Frank Herbert",category:"Sci-Fi",rating:4.9,status:"Available",cover:"https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=800&auto=format&fit=crop",preview:"On the desert planet Arrakis, politics, ecology and destiny collide around the most valuable substance in the universe."},
+  {id:4,title:"Designing Data-Intensive Applications",author:"Martin Kleppmann",category:"Tech",rating:4.9,status:"Checked out",cover:"https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=800&auto=format&fit=crop",preview:"A practical tour through the architecture, trade-offs and principles behind reliable, scalable data systems."},
+  {id:5,title:"Norwegian Wood",author:"Haruki Murakami",category:"Fiction",rating:4.6,status:"Available",cover:"https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=800&auto=format&fit=crop",preview:"A quiet, melancholic story of youth, love, memory and the people who remain with us long after they leave."},
+  {id:6,title:"Atomic Habits",author:"James Clear",category:"Non-Fiction",rating:4.8,status:"Available",cover:"https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=800&auto=format&fit=crop",preview:"Small changes compound into remarkable results when habits are designed around identity, systems and environment."},
+  {id:7,title:"Project Hail Mary",author:"Andy Weir",category:"Sci-Fi",rating:4.8,status:"Available",cover:"https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=800&auto=format&fit=crop",preview:"An astronaut wakes alone with no memory of his mission and discovers that humanity's survival depends on a forgotten connection."},
+  {id:8,title:"The Pragmatic Programmer",author:"David Thomas & Andrew Hunt",category:"Tech",rating:4.7,status:"Available",cover:"https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=800&auto=format&fit=crop",preview:"A timeless guide to software craftsmanship, practical thinking, maintainability and professional growth."}
+];
+
+const tracks = [
+  {id:1,title:"Quiet Pages",artist:"Phat Tai Tam Sessions",kind:"Study Beats",cover:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"},
+  {id:2,title:"Moonlit Reading",artist:"Ambient Library",kind:"Ambient",cover:"https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"},
+  {id:3,title:"Deep Focus",artist:"Study Room",kind:"Focus",cover:"https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"},
+  {id:4,title:"Rain & Pages",artist:"Slow Evening",kind:"Relax",cover:"https://images.unsplash.com/photo-1501691223387-dd0500403074?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"}
+];
+
+let publications = [
+  {id:101,title:"Why Libraries Still Matter",category:"Essay",author:"Maya Chen",avatar:"https://i.pravatar.cc/100?img=47",cover:"https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=900&auto=format&fit=crop",body:"In an age of infinite feeds, a library gives attention a place to settle. Books create continuity between generations, while quiet rooms create the conditions for thought."},
+  {id:102,title:"A Small Room of Light",category:"Short Story",author:"Daniel Reed",avatar:"https://i.pravatar.cc/100?img=12",cover:"https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=900&auto=format&fit=crop",body:"Every evening at six, the small reading room filled with amber light. No one knew who opened the curtains, but everyone noticed when the room felt brighter."},
+  {id:103,title:"Notes on Reading Slowly",category:"Review",author:"Lena Park",avatar:"https://i.pravatar.cc/100?img=32",cover:"https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=900&auto=format&fit=crop",body:"Slow reading is less about speed than presence. A paragraph can become a room, and a sentence can stay with us for years."}
+];
+
+let user = JSON.parse(localStorage.getItem("ptt_user") || "null");
+let editingId = null;
+let currentTrack = 0;
+let playing = false;
+const audio = document.getElementById("audio");
+
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function stars(r){return "★".repeat(Math.round(r))+"☆".repeat(5-Math.round(r));}
+function fmt(sec){if(!isFinite(sec))return "0:00";return Math.floor(sec/60)+":"+String(Math.floor(sec%60)).padStart(2,"0");}
+
+function authUI(){
+  const el=document.getElementById("authArea");
+  if(user){
+    el.innerHTML=`<div class="flex items-center gap-2">
+      <button onclick="showPage('creator')" class="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-sm font-semibold">Creator Dashboard</button>
+      <button onclick="logout()" class="flex items-center gap-2">
+        <img src="${esc(user.photo)}" class="w-9 h-9 rounded-xl object-cover ring-2 ring-violet-400/40"/>
+        <span class="hidden lg:block text-sm font-semibold">${esc(user.name)}</span>
+      </button>
+    </div>`;
+    document.getElementById("creatorNav").classList.remove("hidden");
+  } else {
+    el.innerHTML=`<button onclick="mockGoogleLogin()" class="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold hover:-translate-y-0.5 transition">Sign in with Google</button>`;
+    document.getElementById("creatorNav").classList.add("hidden");
+  }
+}
+
+function mockGoogleLogin(){
+  user={name:"Alex Morgan",email:"alex@example.com",photo:"https://i.pravatar.cc/100?img=68"};
+  localStorage.setItem("ptt_user",JSON.stringify(user));
+  authUI(); showPage("creator");
+}
+
+function logout(){
+  user=null; localStorage.removeItem("ptt_user"); authUI(); showPage("home");
+}
+
+function showPage(page){
+  window.scrollTo({top:0,behavior:"smooth"});
+  const app=document.getElementById("app");
+  if(page==="home") app.innerHTML=homePage();
+  if(page==="library") app.innerHTML=libraryPage();
+  if(page==="music") app.innerHTML=musicPage();
+  if(page==="community") app.innerHTML=communityPage();
+  if(page==="creator") app.innerHTML=user?creatorPage():loginPage();
+  authUI();
+}
+
+function homePage(){
+ return `<div class="space-y-20">
+  <section class="grid lg:grid-cols-[1.15fr_.85fr] gap-10 items-center pt-8 lg:pt-16">
+    <div class="fade-up">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 text-xs font-bold uppercase tracking-wider mb-6">A new home for curious minds</div>
+      <h1 class="text-5xl md:text-7xl font-black tracking-[-.05em] leading-[.95]">Read. Listen.<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-emerald-500">Create.</span></h1>
+      <p class="mt-7 text-lg text-slate-600 dark:text-slate-400 max-w-xl leading-8">A beautiful digital library where books, music, ideas and community creations live together.</p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <button onclick="showPage('library')" class="px-5 py-3 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold hover:-translate-y-1 transition shadow-lg">Explore Library →</button>
+        <button onclick="showPage('music')" class="px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 font-semibold hover:bg-white dark:hover:bg-slate-900 transition">Open Music</button>
+      </div>
+      <div class="mt-10 flex items-center gap-6 text-sm text-slate-500"><span><b class="text-slate-900 dark:text-white">8</b> featured books</span><span><b class="text-slate-900 dark:text-white">4</b> audio sessions</span><span><b class="text-slate-900 dark:text-white">∞</b> ideas</span></div>
+    </div>
+    <div class="relative fade-up">
+      <div class="absolute -inset-6 bg-gradient-to-br from-violet-500/20 to-emerald-400/20 blur-3xl rounded-full"></div>
+      <div class="relative grid grid-cols-2 gap-4 rotate-1">
+        <img src="${books[0].cover}" class="rounded-3xl aspect-[3/4] object-cover shadow-2xl translate-y-8"/>
+        <img src="${books[2].cover}" class="rounded-3xl aspect-[3/4] object-cover shadow-2xl"/>
+        <div class="col-span-2 glass rounded-3xl p-5 border border-white/50 dark:border-slate-700/60 shadow-xl">
+          <div class="flex items-center justify-between"><div><div class="text-xs uppercase tracking-widest text-slate-500">Now reading</div><div class="font-bold mt-1">The Creative Act</div></div><span class="text-violet-500">✦</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <sectionHeading title="Featured Library" subtitle="Hand-picked reading for the curious." action="See all" onclick="showPage('library')"/>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">${books.slice(0,4).map(bookCard).join("")}</div>
+  </section>
+
+  <section class="rounded-[2rem] bg-slate-900 text-white dark:bg-slate-900 p-8 md:p-12 overflow-hidden relative">
+    <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-violet-600/30 blur-3xl"></div>
+    <div class="relative grid lg:grid-cols-[1fr_auto] gap-8 items-end">
+      <div><div class="text-violet-300 text-xs uppercase tracking-[.25em] font-bold">Listen while you read</div><h2 class="text-3xl md:text-4xl font-bold mt-3">A soundtrack for quiet attention.</h2><p class="text-slate-400 mt-3 max-w-2xl">Study beats, ambient rooms and audiobooks — all available from the persistent player.</p></div>
+      <button onclick="playTrack(0)" class="px-5 py-3 rounded-2xl bg-white text-slate-900 font-bold">▶ Play Quiet Pages</button>
+    </div>
+  </section>
+
+  <section>
+    ${sectionHeading("Community Creations","Stories, essays and reflections published by members.","Explore",()=>showPage('community'))}
+    <div class="grid md:grid-cols-3 gap-6 mt-6">${publications.map(publicationCard).join("")}</div>
+  </section>
+ </div>`;
+}
+
+function sectionHeading(title,subtitle,action,fn){
+ return `<div class="flex items-end justify-between gap-4"><div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">${title}</h2><p class="text-slate-500 mt-1">${subtitle}</p></div><button onclick="${fn.toString().replace(/"/g,'&quot;')}" class="hidden sm:block text-sm font-semibold text-violet-600">${action} →</button></div>`;
+}
+function bookCard(b){
+ return `<article class="group">
+   <div class="relative overflow-hidden rounded-2xl bg-slate-200 dark:bg-slate-800">
+    <img src="${b.cover}" class="w-full aspect-[4/5] object-cover group-hover:scale-105 transition duration-500"/>
+    <button onclick="openPreview(${b.id})" class="absolute bottom-3 left-3 right-3 py-2.5 rounded-xl glass font-semibold text-sm opacity-0 group-hover:opacity-100 transition">Read Preview</button>
+   </div>
+   <div class="pt-4"><div class="text-xs font-bold uppercase tracking-wider text-violet-500">${b.category}</div><h3 class="font-bold mt-1 line-clamp-2">${esc(b.title)}</h3><p class="text-sm text-slate-500 mt-1">${esc(b.author)}</p><div class="mt-2 flex items-center justify-between text-xs"><span class="text-amber-500">${stars(b.rating)} <span class="text-slate-500">${b.rating}</span></span><span class="${b.status==='Available'?'text-emerald-600':'text-amber-600'}">${b.status}</span></div></div>
+ </article>`;
+}
+
+function libraryPage(){
+ return `<div class="space-y-8">
+  <div><div class="text-violet-500 text-xs uppercase tracking-[.25em] font-bold">Digital Library</div><h1 class="text-4xl md:text-5xl font-black tracking-tight mt-2">Find your next world.</h1><p class="text-slate-500 mt-3 max-w-2xl">Browse a curated collection across literature, technology, ideas and imagination.</p></div>
+  <div class="flex flex-col md:flex-row gap-3"><input id="bookSearch" oninput="filterBooks()" placeholder="Search title or author…" class="flex-1 px-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:ring-2 focus:ring-violet-500/30"/><div id="filters" class="flex gap-2 flex-wrap">${["All","Fiction","Non-Fiction","Sci-Fi","Tech"].map((x,i)=>`<button onclick="setFilter('${x}')" class="filter px-4 py-2.5 rounded-xl ${i===0?'bg-slate-900 text-white dark:bg-white dark:text-slate-900':'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800'} text-sm font-semibold">${x}</button>`).join("")}</div></div>
+  <div id="bookGrid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">${books.map(bookCard).join("")}</div>
+ </div>`;
+}
+let activeFilter="All";
+function setFilter(f){activeFilter=f; document.querySelectorAll(".filter").forEach(x=>{x.className="filter px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold"}); [...document.querySelectorAll(".filter")].find(x=>x.textContent===f).className="filter px-4 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"; filterBooks();}
+function filterBooks(){const q=(document.getElementById("bookSearch")?.value||"").toLowerCase(); const arr=books.filter(b=>(activeFilter==="All"||b.category===activeFilter)&&(`${b.title} ${b.author}`).toLowerCase().includes(q)); document.getElementById("bookGrid").innerHTML=arr.map(bookCard).join("")||`<div class="col-span-full py-20 text-center text-slate-500">No books found.</div>`;}
+
+function musicPage(){
+ return `<div class="space-y-10">
+  <div><div class="text-emerald-500 text-xs uppercase tracking-[.25em] font-bold">Music & Audiobooks</div><h1 class="text-4xl md:text-5xl font-black tracking-tight mt-2">Sound for every chapter.</h1><p class="text-slate-500 mt-3">Start a track and keep exploring — the player stays with you.</p></div>
+  <div class="grid md:grid-cols-2 gap-5">${["Study & Focus","Ambient Reading"].map((x,i)=>`<div class="rounded-3xl p-7 ${i?'bg-emerald-50 dark:bg-emerald-950/20':'bg-violet-50 dark:bg-violet-950/20'} border border-slate-200/60 dark:border-slate-800"><div class="text-sm font-bold uppercase tracking-wider text-slate-500">${x}</div><div class="text-2xl font-bold mt-2">${i?'Slow down. Stay awhile.':'Deep work, gently.'}</div><button onclick="playTrack(${i})" class="mt-6 px-4 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold">▶ Play playlist</button></div>`).join("")}</div>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">${tracks.map((t,i)=>`<article class="group"><img src="${t.cover}" class="aspect-square w-full object-cover rounded-3xl shadow-lg group-hover:-translate-y-1 transition"/><div class="pt-4"><div class="text-xs text-emerald-600 font-bold uppercase tracking-wider">${t.kind}</div><h3 class="font-bold mt-1">${t.title}</h3><p class="text-sm text-slate-500">${t.artist}</p><button onclick="playTrack(${i})" class="mt-3 text-sm font-bold text-violet-600">Listen →</button></div></article>`).join("")}</div>
+ </div>`;
+}
+
+function communityPage(){
+ return `<div class="space-y-8"><div><div class="text-violet-500 text-xs uppercase tracking-[.25em] font-bold">Community</div><h1 class="text-4xl md:text-5xl font-black tracking-tight mt-2">Made by readers.</h1><p class="text-slate-500 mt-3">A public feed of essays, reviews and stories from the library community.</p></div><div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">${publications.map(publicationCard).join("")}</div></div>`;
+}
+function publicationCard(p){
+ return `<article onclick="openPublication(${p.id})" class="cursor-pointer group rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:-translate-y-1 transition shadow-sm"><img src="${p.cover}" class="w-full aspect-[16/9] object-cover group-hover:scale-[1.02] transition"/><div class="p-5"><div class="text-xs font-bold uppercase tracking-wider text-violet-500">${esc(p.category)}</div><h3 class="text-xl font-bold mt-2">${esc(p.title)}</h3><p class="text-sm text-slate-500 mt-2 line-clamp-2">${esc(p.body)}</p><div class="flex items-center gap-2 mt-5"><img src="${p.avatar}" class="w-8 h-8 rounded-full"/><span class="text-sm font-medium">${esc(p.author)}</span></div></div></article>`;
+}
+
+function creatorPage(){
+ const mine=publications.filter(p=>p.author===user.name);
+ return `<div class="space-y-8">
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-5"><div><div class="text-violet-500 text-xs uppercase tracking-[.25em] font-bold">Creator Dashboard</div><h1 class="text-4xl md:text-5xl font-black tracking-tight mt-2">Your creative room.</h1><p class="text-slate-500 mt-3">Write, publish and manage your work.</p></div><button onclick="openEditor()" class="px-5 py-3 rounded-2xl bg-violet-600 text-white font-bold shadow-lg shadow-violet-600/20">＋ New Publication</button></div>
+  <div class="grid md:grid-cols-3 gap-4"><div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><div class="text-sm text-slate-500">Publications</div><div class="text-3xl font-black mt-1">${mine.length}</div></div><div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><div class="text-sm text-slate-500">Community reach</div><div class="text-3xl font-black mt-1">1.2k</div></div><div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><div class="text-sm text-slate-500">Status</div><div class="text-3xl font-black mt-1 text-emerald-500">Creator</div></div></div>
+  <div><h2 class="text-2xl font-bold">My Publications</h2><div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">${mine.length?mine.map(p=>`<article class="rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><img src="${p.cover}" class="w-full aspect-[16/9] object-cover"/><div class="p-5"><div class="font-bold text-lg">${esc(p.title)}</div><div class="text-sm text-slate-500 mt-1">${esc(p.category)}</div><div class="flex gap-2 mt-5"><button onclick="openEditor(${p.id})" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">Edit</button><button onclick="deletePublication(${p.id})" class="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 text-sm font-semibold">Delete</button></div></div></article>`).join(""):`<div class="col-span-full p-12 text-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500">You have not published anything yet.</div>`}</div></div>
+ </div>`;
+}
+
+function loginPage(){return `<div class="max-w-xl mx-auto py-20 text-center"><div class="w-16 h-16 mx-auto rounded-3xl bg-violet-100 dark:bg-violet-950/40 grid place-items-center text-2xl">✦</div><h1 class="text-4xl font-black mt-6">Creator access</h1><p class="text-slate-500 mt-3">Sign in to write and publish your own books, reviews, essays and stories.</p><button onclick="mockGoogleLogin()" class="mt-8 px-6 py-3 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold">Continue with Google</button></div>`;}
+
+function openEditor(id=null){
+ if(!user)return showPage("creator");
+ editingId=id;
+ const p=id?publications.find(x=>x.id===id):null;
+ document.getElementById("modalContent").innerHTML=`<div class="p-6 md:p-8"><div class="flex justify-between items-center"><div><div class="text-violet-500 text-xs font-bold uppercase tracking-widest">Creator Studio</div><h2 class="text-2xl font-bold mt-1">${id?'Edit publication':'New publication'}</h2></div><button onclick="closeModal()" class="text-2xl text-slate-400">×</button></div>
+ <div class="grid md:grid-cols-2 gap-4 mt-7"><input id="pubTitle" value="${esc(p?.title||"")}" placeholder="Title" class="px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"/><select id="pubCategory" class="px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"><option ${p?.category==="Review"?"selected":""}>Review</option><option ${p?.category==="Essay"?"selected":""}>Essay</option><option ${p?.category==="Short Story"?"selected":""}>Short Story</option><option ${p?.category==="Blog"?"selected":""}>Blog</option></select><input id="pubCover" value="${esc(p?.cover||"https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=900&auto=format&fit=crop")}" placeholder="Cover image URL" class="md:col-span-2 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"/><textarea id="pubBody" rows="10" placeholder="Write your story, review or reflection…" class="md:col-span-2 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none resize-y">${esc(p?.body||"")}</textarea></div>
+ <div class="flex justify-end gap-3 mt-6"><button onclick="closeModal()" class="px-4 py-2.5 rounded-xl text-sm font-semibold">Cancel</button><button onclick="savePublication()" class="px-5 py-2.5 rounded-xl bg-violet-600 text-white font-bold">Publish</button></div></div>`;
+ document.getElementById("modal").classList.remove("hidden");
+}
+function savePublication(){
+ const title=document.getElementById("pubTitle").value.trim(), body=document.getElementById("pubBody").value.trim();
+ if(!title||!body)return alert("Please add a title and body.");
+ const data={title,body,category:document.getElementById("pubCategory").value,cover:document.getElementById("pubCover").value||"https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=900&auto=format&fit=crop",author:user.name,avatar:user.photo};
+ if(editingId){Object.assign(publications.find(x=>x.id===editingId),data);} else {publications.unshift({id:Date.now(),...data});}
+ closeModal(); showPage("creator");
+}
+function deletePublication(id){if(confirm("Delete this publication?")){publications=publications.filter(x=>x.id!==id);showPage("creator");}}
+function openPublication(id){const p=publications.find(x=>x.id===id);document.getElementById("modalContent").innerHTML=`<article><img src="${p.cover}" class="w-full max-h-80 object-cover"/><div class="p-7 md:p-10"><div class="text-xs text-violet-500 font-bold uppercase tracking-widest">${p.category}</div><h2 class="text-4xl font-black mt-2">${esc(p.title)}</h2><div class="flex items-center gap-3 mt-5"><img src="${p.avatar}" class="w-9 h-9 rounded-full"/><span class="text-sm font-semibold">${esc(p.author)}</span></div><p class="mt-8 text-lg leading-8 text-slate-700 dark:text-slate-300 whitespace-pre-line">${esc(p.body)}</p></div></article>`;document.getElementById("modal").classList.remove("hidden");}
+function openPreview(id){const b=books.find(x=>x.id===id);document.getElementById("modalContent").innerHTML=`<div class="p-6 md:p-10"><div class="flex justify-end"><button onclick="closeModal()" class="text-2xl text-slate-400">×</button></div><div class="max-w-2xl mx-auto"><div class="text-xs text-violet-500 font-bold uppercase tracking-widest">${b.category}</div><h2 class="text-4xl font-black mt-2">${esc(b.title)}</h2><p class="text-slate-500 mt-2">${esc(b.author)} · ${b.rating} ★</p><div class="h-px bg-slate-200 dark:bg-slate-800 my-8"></div><p class="font-serif text-xl leading-9 text-slate-700 dark:text-slate-300">${esc(b.preview)}</p><p class="font-serif leading-8 text-slate-500 mt-8">The reader interface can later be connected to your full digital book files, EPUB/PDF storage or a database-backed reading service. This preview is intentionally clean and distraction-free.</p></div></div>`;document.getElementById("modal").classList.remove("hidden");}
+function closeModal(){document.getElementById("modal").classList.add("hidden");}
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
+
+function playTrack(i){currentTrack=i;const t=tracks[i];audio.src=t.url;audio.play().catch(()=>{});playing=true;updatePlayer();document.getElementById("playBtn").textContent="Ⅱ";}
+function togglePlay(){if(!audio.src){playTrack(currentTrack);return;} if(audio.paused){audio.play();playing=true;}else{audio.pause();playing=false;}updatePlayer();}
+function nextTrack(){playTrack((currentTrack+1)%tracks.length);}
+function updatePlayer(){const t=tracks[currentTrack];document.getElementById("playerTitle").textContent=t.title;document.getElementById("playerArtist").textContent=t.artist;document.getElementById("playerArt").src=t.cover;document.getElementById("playBtn").textContent=audio.paused?"▶":"Ⅱ";}
+function seekAudio(v){if(audio.duration)audio.currentTime=(v/100)*audio.duration;}
+function toggleMute(){audio.muted=!audio.muted;}
+function toggleQueue(){alert("Queue: "+tracks.map(x=>x.title).join(" → "));}
+audio.addEventListener("timeupdate",()=>{document.getElementById("currentTime").textContent=fmt(audio.currentTime);document.getElementById("duration").textContent=fmt(audio.duration);document.getElementById("progress").value=audio.duration?(audio.currentTime/audio.duration)*100:0;});
+audio.addEventListener("ended",nextTrack);
+document.getElementById("volume").addEventListener("input",e=>audio.volume=e.target.value);
+
+function toggleTheme(){document.documentElement.classList.toggle("dark");localStorage.setItem("ptt_theme",document.documentElement.classList.contains("dark")?"dark":"light");document.getElementById("themeIcon").textContent=document.documentElement.classList.contains("dark")?"☀":"☾";}
+if(localStorage.getItem("ptt_theme")==="dark"){document.documentElement.classList.add("dark");document.getElementById("themeIcon").textContent="☀";}
+authUI(); showPage("home");
+</script>
 </body>
-
 </html>
