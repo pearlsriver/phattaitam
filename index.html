@@ -29,9 +29,35 @@
     .dark .glass { background: rgba(15,23,42,.68); }
     .fade-up { animation: fadeUp .55s ease both; }
     @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:none } }
-    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
     .range-violet { accent-color: #8b5cf6; }
     .modal-backdrop { background: rgba(2,6,23,.68); backdrop-filter: blur(8px); }
+
+    .range-violet {
+      accent-color: #8b5cf6;
+    }
+
+    /* Chừa không gian để player không che nội dung cuối trang */
+    body {
+      padding-bottom: 110px;
+    }
+
+    /* Hiệu ứng nhẹ khi đổi bài */
+    .player-changing {
+      animation: playerPulse 0.3s ease;
+    }
+
+    @keyframes playerPulse {
+      0% {
+        opacity: 0.6;
+        transform: translateY(2px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
   </style>
 </head>
 
@@ -72,7 +98,7 @@
       <div class="flex items-center gap-3">
         <img id="playerArt" src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=200&auto=format&fit=crop" class="w-12 h-12 rounded-xl object-cover hidden sm:block" />
         <div class="min-w-0 w-36 sm:w-56">
-          <div id="playerTitle" class="font-semibold text-sm truncate">Quiet Pages</div>
+          <div id="playerTitle" class="font-semibold text-sm truncate">Demo Song</div>
           <div id="playerArtist" class="text-xs text-slate-500 truncate">Phat Tai Tam Sessions</div>
         </div>
         <button onclick="togglePlay()" id="playBtn" class="w-10 h-10 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 grid place-items-center">▶</button>
@@ -88,6 +114,8 @@
       </div>
     </div>
   </section>
+
+</section>
 
   <!-- Modal -->
   <div id="modal" class="hidden fixed inset-0 z-[60] modal-backdrop p-4 md:p-8">
@@ -109,11 +137,16 @@ const books = [
 ];
 
 const tracks = [
-  {id:1,title:"Quiet Pages",artist:"Phat Tai Tam Sessions",kind:"Study Beats",cover:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"},
-  {id:2,title:"Moonlit Reading",artist:"Ambient Library",kind:"Ambient",cover:"https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"},
-  {id:3,title:"Deep Focus",artist:"Study Room",kind:"Focus",cover:"https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"},
-  {id:4,title:"Rain & Pages",artist:"Slow Evening",kind:"Relax",cover:"https://images.unsplash.com/photo-1501691223387-dd0500403074?q=80&w=800&auto=format&fit=crop",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"}
+  {
+    id: 1,
+    title: "Chú Vãng Sanh",
+    artist: "Phật Tại Tâm",
+    kind: "Nhạc Phật",
+    cover: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=800&auto=format&fit=crop",
+    url: "./static/music/ChuVangSanh.mp3"
+  }
 ];
+
 
 let publications = [
   {id:101,title:"Why Libraries Still Matter",category:"Essay",author:"Maya Chen",avatar:"https://i.pravatar.cc/100?img=47",cover:"https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=900&auto=format&fit=crop",body:"In an age of infinite feeds, a library gives attention a place to settle. Books create continuity between generations, while quiet rooms create the conditions for thought."},
@@ -300,6 +333,7 @@ document.getElementById("volume").addEventListener("input",e=>audio.volume=e.tar
 function toggleTheme(){document.documentElement.classList.toggle("dark");localStorage.setItem("ptt_theme",document.documentElement.classList.contains("dark")?"dark":"light");document.getElementById("themeIcon").textContent=document.documentElement.classList.contains("dark")?"☀":"☾";}
 if(localStorage.getItem("ptt_theme")==="dark"){document.documentElement.classList.add("dark");document.getElementById("themeIcon").textContent="☀";}
 authUI(); showPage("home");
+
 </script>
 </body>
 </html>
