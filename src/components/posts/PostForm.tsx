@@ -2,29 +2,33 @@
 
 import { useRef, useState } from "react";
 import RichEditor from "@/components/posts/RichEditor";
+import TagInput from "@/components/ui/TagInput";
+import { useAuth } from "@/hooks/useAuth";
 import { MAX_UPLOAD_MB } from "@/lib/supabase";
 import { removeFiles } from "@/services/storage";
-import { CATEGORIES, CATEGORY_KEYS, type Category, type Post, type PostInput } from "@/types/post";
+import type { Post, PostInput } from "@/types/post";
 import { isHtml, stripHtml, textToHtml } from "@/utils/html";
 import { difference, imagePathFromUrl, imagePathsInHtml } from "@/utils/storagePaths";
 
 /** Form dùng chung cho Viết bài mới và Sửa bài */
 export default function PostForm({
   post,
-  defaultCategory = "van",
+  defaultTags = [],
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   post?: Post | null;
-  defaultCategory?: Category;
+  defaultTags?: string[];
   submitLabel: string;
   onSubmit: (input: PostInput) => Promise<void>;
   onCancel?: () => void;
 }) {
+  const { profile } = useAuth();
   const initialHtml = post ? (isHtml(post.content) ? post.content : textToHtml(post.content)) : "";
   const [title, setTitle] = useState(post?.title ?? "");
-  const [category, setCategory] = useState<Category>(post?.category ?? defaultCategory);
+  const [tags, setTags] = useState<string[]>(post?.tags ?? defaultTags);
+  const [authorName, setAuthorName] = useState(post ? (post.author_name ?? post.author?.full_name ?? "") : (profile?.full_name ?? ""));
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(initialHtml);
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -53,7 +57,7 @@ export default function PostForm({
     setError(null);
     const finalContent = hasText ? content : "";
     try {
-      await onSubmit({ title, category, excerpt, content: finalContent, newFile, removeFile });
+      await onSubmit({ title, tags, authorName, excerpt, content: finalContent, newFile, removeFile });
       await cleanupSession(finalContent);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không lưu được bài viết");
@@ -62,7 +66,6 @@ export default function PostForm({
   }
 
   async function cancel() {
-    // Huỷ: bỏ mọi ảnh mới tải lên trong lần soạn này (nội dung đã lưu giữ nguyên)
     await cleanupSession(post?.content ?? "");
     onCancel?.();
   }
@@ -70,14 +73,19 @@ export default function PostForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" className="field font-serif text-xl" />
-      <div className="flex flex-wrap gap-2">
-        {CATEGORY_KEYS.map((k) => (
-          <button key={k} type="button" onClick={() => setCategory(k)}
-            className={`rounded-full px-4 py-1.5 text-sm ${category === k ? "bg-ink text-paper" : "border border-line text-ink-soft hover:bg-soft"}`}>
-            {CATEGORIES[k].label}
-          </button>
-        ))}
+
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-ink">Tác giả</span>
+        <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} maxLength={120}
+          placeholder="Tên tác giả của tác phẩm" className="field" />
+        <span className="mt-1 block text-xs text-muted">Có thể khác người đăng (ví dụ: dịch giả, tác giả kinh sách). Để trống sẽ dùng tên của bạn.</span>
+      </label>
+
+      <div>
+        <span className="mb-1 block text-sm font-medium text-ink">Hashtag</span>
+        <TagInput value={tags} onChange={setTags} />
       </div>
+
       <input value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Tóm tắt ngắn — hiện khi chia sẻ link (không bắt buộc)" className="field" />
 
       <RichEditor
@@ -91,23 +99,19 @@ export default function PostForm({
         <p className="font-medium text-ink">📎 Đính kèm sách / tài liệu (PDF, EPUB, DOCX, TXT — tối đa {MAX_UPLOAD_MB} MB)</p>
         {post?.file_path && !newFile && (
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={removeFile} onChange={(e) => setRemoveFile(e.target.checked)} />
+            <input type="checkbox" checked={removeFile} onChange={(e) => setRemoveFile(e.target.checked)} className="accent-[var(--accent)]" />
             <span className={removeFile ? "line-through" : ""}>Hiện tại: {post.file_name}</span>
-            <span className="text-red-600">— xoá tệp này</span>
+            <span className="text-red-500">— xoá tệp này</span>
           </label>
         )}
         <input type="file" accept=".pdf,.epub,.doc,.docx,.txt"
           onChange={(e) => { setNewFile(e.target.files?.[0] ?? null); setRemoveFile(false); }} />
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="text-red-500">{error}</p>}
       <div className="flex flex-wrap gap-3">
-        <button disabled={busy} className="rounded-full bg-ink px-7 py-3 font-medium text-paper hover:opacity-90 disabled:opacity-50">
-          {busy ? "Đang lưu…" : submitLabel}
-        </button>
-        {onCancel && (
-          <button type="button" onClick={cancel} className="rounded-full border border-line px-6 py-3 text-ink-soft hover:bg-soft">Huỷ</button>
-        )}
+        <button disabled={busy} className="btn btn-primary !px-7 !py-3">{busy ? "Đang lưu…" : submitLabel}</button>
+        {onCancel && <button type="button" onClick={cancel} className="btn btn-secondary !py-3">Huỷ</button>}
       </div>
     </form>
   );

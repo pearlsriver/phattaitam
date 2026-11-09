@@ -3,22 +3,25 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AlbumCard from "@/components/music/AlbumCard";
-import SongCard from "@/components/music/SongCard";
 import { usePlayer } from "@/components/music/PlayerProvider";
-import { useSongs } from "@/hooks/useSongs";
+import SongCard from "@/components/music/SongCard";
+import { RadioIcon } from "@/components/ui/Icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useSongs } from "@/hooks/useSongs";
 import { listAlbums } from "@/services/albumService";
+import { loadRadioQueue } from "@/services/radioService";
 import type { Album } from "@/types/album";
 import { matchSearch } from "@/utils/slug";
 
 export default function MusicPage() {
   const { songs, loading, error } = useSongs();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { playSong, startRadio, current } = usePlayer();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [q, setQ] = useState("");
   const [radioAlbum, setRadioAlbum] = useState("");
   const [sort, setSort] = useState<"new" | "plays">("new");
+  const [radioBusy, setRadioBusy] = useState(false);
 
   useEffect(() => {
     listAlbums().then(setAlbums).catch(() => {});
@@ -29,39 +32,50 @@ export default function MusicPage() {
     return sort === "plays" ? [...list].sort((a, b) => b.play_count - a.play_count) : list;
   }, [songs, q, sort]);
 
-  function radio() {
+  async function radio() {
     const album = albums.find((a) => a.id === radioAlbum);
-    const list = album ? songs.filter((s) => s.album_id === album.id) : songs;
-    startRadio(list, album ? `Radio · ${album.title}` : "Radio Phật Tại Tâm");
+    if (album) {
+      startRadio(songs.filter((s) => s.album_id === album.id), `Radio · ${album.title}`);
+      return;
+    }
+    setRadioBusy(true);
+    try {
+      // Danh sách do quản trị viên chọn (hoặc toàn bộ thư viện nếu chưa chọn)
+      const r = await loadRadioQueue();
+      startRadio(r.songs, "Radio Phật Tại Tâm", r.shuffle);
+    } finally {
+      setRadioBusy(false);
+    }
   }
 
   return (
     <div>
-      <section className="mb-12 grid items-center gap-6 rounded-[2rem] bg-ink px-8 py-10 text-paper md:grid-cols-[1.3fr_1fr] md:px-12">
+      <section className="hero-glow mb-12 grid items-center gap-6 overflow-hidden rounded-[2rem] border border-line px-8 py-10 md:grid-cols-[1.3fr_1fr] md:px-12">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] opacity-70">Âm nhạc</p>
-          <h1 className="mt-2 font-serif text-4xl font-semibold">Nghe trong lúc đọc</h1>
-          <p className="mt-3 max-w-md opacity-80">Nghe, tải về, xem lời, hoặc bật radio phát ngẫu nhiên — toàn bộ thư viện hay từng album.</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-accent">Âm nhạc</p>
+          <h1 className="mt-2 font-serif text-4xl font-semibold text-ink">Nghe trong lúc đọc</h1>
+          <p className="mt-3 max-w-md text-ink-soft">Nghe, tải về, xem lời, hoặc bật Radio Phật Tại Tâm — phát liên tục từ danh sách do ban quản trị tuyển chọn.</p>
         </div>
         <div className="flex flex-col gap-3 md:items-end">
           <div className="flex w-full flex-wrap gap-2 md:justify-end">
-            <select value={radioAlbum} onChange={(e) => setRadioAlbum(e.target.value)}
-              className="rounded-full border border-paper/30 bg-transparent px-4 py-2.5 text-sm text-paper [&>option]:text-black">
-              <option value="">Radio: toàn bộ thư viện</option>
-              {albums.map((a) => <option key={a.id} value={a.id}>Radio: {a.title}</option>)}
+            <select value={radioAlbum} onChange={(e) => setRadioAlbum(e.target.value)} className="field !w-auto !rounded-full !py-2.5 text-sm">
+              <option value="">Radio Phật Tại Tâm</option>
+              {albums.map((a) => <option key={a.id} value={a.id}>Radio album: {a.title}</option>)}
             </select>
-            <button type="button" onClick={radio} disabled={!songs.length}
-              className="flex items-center gap-2 rounded-full bg-paper px-5 py-2.5 font-medium text-ink hover:opacity-90 disabled:opacity-50">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-sm text-paper">▶</span> Bật Radio
+            <button type="button" onClick={radio} disabled={!songs.length || radioBusy} className="btn btn-primary">
+              <RadioIcon size={18} /> {radioBusy ? "Đang tải…" : "Bật Radio"}
             </button>
           </div>
-          {user && (
-            <div className="flex gap-3 text-sm">
-              <Link href="/tai-nhac" className="underline opacity-80 hover:opacity-100">⬆ Tải nhạc lên</Link>
-              <Link href="/album/moi" className="underline opacity-80 hover:opacity-100">＋ Tạo album</Link>
-              <Link href="/playlist" className="underline opacity-80 hover:opacity-100">♫ Playlist của tôi</Link>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-3 text-sm">
+            {user && (
+              <>
+                <Link href="/tai-nhac" className="text-accent hover:underline">⬆ Tải nhạc lên</Link>
+                <Link href="/album/moi" className="text-accent hover:underline">＋ Tạo album</Link>
+                <Link href="/playlist" className="text-accent hover:underline">♫ Playlist của tôi</Link>
+              </>
+            )}
+            {isAdmin && <Link href="/admin/radio" className="text-accent hover:underline">⚙ Quản lý Radio</Link>}
+          </div>
         </div>
       </section>
 
@@ -87,7 +101,7 @@ export default function MusicPage() {
       </div>
 
       {loading && <p className="text-muted">Đang tải…</p>}
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="text-red-500">{error}</p>}
       {!loading && !filtered.length && <p className="text-muted">Chưa có bài hát nào.</p>}
       <div className="grid gap-3 lg:grid-cols-2">
         {filtered.map((s) => (

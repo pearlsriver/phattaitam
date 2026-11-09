@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { deletePost, listAllPosts, setPostPublished } from "@/services/postService";
 import { deleteSong, listAllSongs, setSongPublished } from "@/services/songService";
-import { CATEGORIES, type Post } from "@/types/post";
+import type { Post } from "@/types/post";
+import { authorLabel } from "@/types/post";
 import type { Song } from "@/types/song";
 import { formatCount, formatDateTime, wasEdited } from "@/utils/formatDate";
 
@@ -38,21 +39,24 @@ function Admin() {
   const pendingSongs = songs.filter((s) => !s.is_published).length;
   const shownPosts = onlyPending ? posts.filter((p) => !p.is_published) : posts;
   const shownSongs = onlyPending ? songs.filter((s) => !s.is_published) : songs;
-  const tabCls = (on: boolean) => `rounded-full px-4 py-2 text-sm ${on ? "bg-ink text-paper" : "border border-line text-ink-soft hover:bg-soft"}`;
-  const btn = "rounded-full px-3 py-1.5 text-sm";
+  const tabCls = (on: boolean) => `btn ${on ? "btn-primary" : "btn-secondary"}`;
+  const small = "!py-1.5";
 
   return (
     <div>
       <p className="text-xs uppercase tracking-[0.2em] text-muted">Quản trị</p>
       <div className="mb-6 mt-2 flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-serif text-4xl font-semibold text-ink">Quản trị nội dung</h1>
-        <Link href="/admin/don-dep" className="rounded-full border border-line px-4 py-2 text-sm text-ink hover:bg-soft">🧹 Dọn dẹp kho lưu trữ</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/radio" className="btn btn-secondary">📻 Quản lý Radio</Link>
+          <Link href="/admin/don-dep" className="btn btn-secondary">🧹 Dọn dẹp kho lưu trữ</Link>
+        </div>
       </div>
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setTab("posts")} className={tabCls(tab === "posts")}>Bài viết ({pendingPosts} chờ duyệt)</button>
         <button type="button" onClick={() => setTab("songs")} className={tabCls(tab === "songs")}>Nhạc ({pendingSongs} chờ duyệt)</button>
         <label className="ml-auto flex items-center gap-2 text-sm text-ink-soft">
-          <input type="checkbox" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} /> Chỉ hiện mục chờ duyệt
+          <input type="checkbox" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} className="accent-[var(--accent)]" /> Chỉ hiện mục chờ duyệt
         </label>
       </div>
 
@@ -63,15 +67,16 @@ function Admin() {
               <div className="min-w-0 flex-1">
                 <Link href={`/bai-viet/${p.slug}`} className="font-medium text-ink hover:underline">{p.title}</Link>
                 <p className="text-xs text-muted">
-                  {CATEGORIES[p.category]?.label} · {p.author?.full_name ?? "?"} · 👁 {formatCount(p.view_count)}{p.file_name && ` · 📎 ${p.file_name}`}
+                  Tác giả: {authorLabel(p)} · đăng bởi {p.author?.full_name ?? "?"} · 👁 {formatCount(p.view_count)}{p.file_name && ` · 📎 ${p.file_name}`}
                 </p>
+                {p.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1.5">{p.tags.map((t) => <span key={t} className="chip">#{t}</span>)}</div>}
                 <p className="text-xs text-muted"><Times created={p.created_at} updated={p.updated_at} verb="Đăng" /></p>
               </div>
               <button type="button" onClick={async () => { await setPostPublished(p.id, !p.is_published); load(); }}
-                className={`${btn} ${p.is_published ? "bg-soft text-ink" : "bg-green-700 text-white"}`}>{p.is_published ? "Ẩn" : "Duyệt"}</button>
-              <Link href={`/sua-bai/${p.id}`} className={`${btn} border border-line text-ink hover:bg-soft`}>✏️ Sửa</Link>
+                className={`btn ${small} ${p.is_published ? "btn-secondary" : "btn-primary"}`}>{p.is_published ? "Ẩn" : "Duyệt"}</button>
+              <Link href={`/sua-bai/${p.id}`} className={`btn btn-secondary ${small}`}>✏️ Sửa</Link>
               <button type="button" onClick={async () => { if (confirm("Xoá vĩnh viễn bài này, kèm tệp đính kèm và ảnh trong bài?")) { await deletePost(p); load(); } }}
-                className={`${btn} text-red-600 hover:bg-soft`}>Xoá</button>
+                className={`btn btn-danger ${small}`}>Xoá</button>
             </div>
           ))}
 
@@ -84,10 +89,10 @@ function Admin() {
                 <p className="text-xs text-muted"><Times created={s.created_at} updated={s.updated_at} verb="Tải lên" /></p>
               </div>
               <button type="button" onClick={async () => { await setSongPublished(s.id, !s.is_published); load(); }}
-                className={`${btn} ${s.is_published ? "bg-soft text-ink" : "bg-green-700 text-white"}`}>{s.is_published ? "Ẩn" : "Duyệt"}</button>
-              <Link href={`/sua-nhac/${s.id}`} className={`${btn} border border-line text-ink hover:bg-soft`}>✏️ Sửa</Link>
+                className={`btn ${small} ${s.is_published ? "btn-secondary" : "btn-primary"}`}>{s.is_published ? "Ẩn" : "Duyệt"}</button>
+              <Link href={`/sua-nhac/${s.id}`} className={`btn btn-secondary ${small}`}>✏️ Sửa</Link>
               <button type="button" onClick={async () => { if (confirm("Xoá vĩnh viễn bài hát, kèm tệp nhạc và ảnh bìa?")) { await deleteSong(s); load(); } }}
-                className={`${btn} text-red-600 hover:bg-soft`}>Xoá</button>
+                className={`btn btn-danger ${small}`}>Xoá</button>
             </div>
           ))}
 

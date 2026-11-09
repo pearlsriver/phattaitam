@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
-import CategoryPage from "@/components/posts/CategoryPage";
-import { CATEGORIES } from "@/types/post";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Kinh Phật",
-  description: CATEGORIES["kinh-phat"].description,
-  alternates: { canonical: "/kinh-phat" },
-};
-
+/** Chuyên mục cũ đã được thay bằng hashtag */
 export default function Page() {
-  return <CategoryPage category="kinh-phat" />;
+  redirect("/thu-vien?tag=kinh-ph%E1%BA%ADt");
 }

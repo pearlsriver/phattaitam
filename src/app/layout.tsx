@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Noto_Sans, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
-import { PlayerProvider } from "@/components/music/PlayerProvider";
-import Header from "@/components/layout/Header";
+import TermsGate from "@/components/legal/TermsGate";
 import Footer from "@/components/layout/Footer";
+import Header from "@/components/layout/Header";
 import AudioPlayer from "@/components/music/AudioPlayer";
+import { PlayerProvider } from "@/components/music/PlayerProvider";
 import { DEFAULT_OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const sans = Noto_Sans({ variable: "--font-sans-vi", subsets: ["latin", "vietnamese"] });
@@ -28,12 +29,12 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION, images: [DEFAULT_OG_IMAGE] },
 };
 
-/* Bật chế độ tối trước khi trang hiển thị để không bị nháy màu */
-const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
+/* Giao diện TỐI là mặc định; chỉ chuyển sang sáng khi người dùng đã chọn "light". */
+const themeScript = `try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.remove('dark')}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" suppressHydrationWarning className={`${sans.variable} ${serif.variable} h-full antialiased`}>
+    <html lang="vi" suppressHydrationWarning className={`${sans.variable} ${serif.variable} dark h-full antialiased`}>
       <head>
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
@@ -41,9 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <PlayerProvider>
             <Header />
-            <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-40 pt-8">{children}</main>
+            <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-44 pt-8">{children}</main>
             <Footer />
             <AudioPlayer />
+            <TermsGate />
           </PlayerProvider>
         </AuthProvider>
       </body>

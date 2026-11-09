@@ -1,17 +1,16 @@
 import { supabase } from "@/lib/supabase";
-import type { Category, Post, PostInput } from "@/types/post";
+import type { Post, PostInput } from "@/types/post";
 import { firstImage } from "@/utils/html";
 import { slugify } from "@/utils/slug";
 import { difference, imagePathsInHtml } from "@/utils/storagePaths";
+import { uniqueTags } from "@/utils/tags";
 import { removeFiles, uploadFile } from "@/services/storage";
 
 const SELECT = "*, author:profiles(full_name, avatar_url)";
 
-export async function listPublishedPosts(category?: Category, limit = 100): Promise<Post[]> {
-  let q = supabase.from("posts").select(SELECT).eq("is_published", true)
+export async function listPublishedPosts(limit = 200): Promise<Post[]> {
+  const { data, error } = await supabase.from("posts").select(SELECT).eq("is_published", true)
     .order("created_at", { ascending: false }).limit(limit);
-  if (category) q = q.eq("category", category);
-  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as Post[];
 }
@@ -61,7 +60,8 @@ export async function createPost(input: PostInput, userId: string, publish: bool
     author_id: userId,
     title: input.title.trim(),
     slug: slugify(input.title),
-    category: input.category,
+    tags: uniqueTags(input.tags),
+    author_name: input.authorName.trim() || null,
     excerpt: input.excerpt.trim() || null,
     content: input.content,
     cover_image: firstImage(input.content),
@@ -98,7 +98,8 @@ export async function updatePost(post: Post, input: PostInput, userId: string, i
 
   const { data, error } = await supabase.from("posts").update({
     title: input.title.trim(),
-    category: input.category,
+    tags: uniqueTags(input.tags),
+    author_name: input.authorName.trim() || null,
     excerpt: input.excerpt.trim() || null,
     content: input.content,
     cover_image: firstImage(input.content),

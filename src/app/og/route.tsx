@@ -1,12 +1,19 @@
 import { ImageResponse } from "next/og";
+import { SITE_URL } from "@/lib/site";
 
-/* Ảnh chia sẻ mặc định (khi bài viết không có ảnh). Chỉ dùng chữ không dấu
-   vì font mặc định của trình tạo ảnh chưa hỗ trợ đủ dấu tiếng Việt. */
+export const dynamic = "force-dynamic";
 
 const size = { width: 1200, height: 630 };
 
+/* Ảnh chia sẻ mặc định (khi bài viết không có ảnh): logo + tên website.
+   Chỉ dùng chữ không dấu vì font mặc định của trình tạo ảnh chưa hỗ trợ đủ dấu tiếng Việt. */
+export async function GET() {
+  let logo: string | null = null;
+  try {
+    const res = await fetch(`${SITE_URL}/logo.png`);
+    if (res.ok) logo = `data:image/png;base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`;
+  } catch {}
 
-export function GET() {
   return new ImageResponse(
     (
       <div
@@ -17,29 +24,19 @@ export function GET() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #f7f3ec 0%, #f3e3cc 55%, #e0b75a 100%)",
-          color: "#1f1a14",
+          background: "linear-gradient(135deg, #0d0b08 0%, #221c14 60%, #3a2c1a 100%)",
+          color: "#f4ecdc",
         }}
       >
-        <div
-          style={{
-            width: 170,
-            height: 170,
-            borderRadius: 40,
-            background: "#9a5b1e",
-            color: "#f7f3ec",
-            fontSize: 120,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          P
-        </div>
-        <div style={{ marginTop: 40, fontSize: 40, letterSpacing: 12, color: "#7c4714" }}>PHATTAITAM.COM</div>
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} width={300} height={300} alt="" style={{ borderRadius: 150 }} />
+        ) : (
+          <div style={{ width: 200, height: 200, borderRadius: 100, background: "#e2b04a", color: "#1c1408", fontSize: 130, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>P</div>
+        )}
+        <div style={{ marginTop: 36, fontSize: 44, letterSpacing: 12, color: "#e2b04a" }}>PHATTAITAM.COM</div>
       </div>
     ),
-    size,
+    { ...size, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" } },
   );
 }

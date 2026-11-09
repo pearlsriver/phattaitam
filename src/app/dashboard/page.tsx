@@ -9,7 +9,7 @@ import { deleteAlbum, listAlbumsByOwner } from "@/services/albumService";
 import { deletePost, listMyPosts } from "@/services/postService";
 import { deleteSong, listMySongs } from "@/services/songService";
 import type { Album } from "@/types/album";
-import { CATEGORIES, type Post } from "@/types/post";
+import type { Post } from "@/types/post";
 import type { Song } from "@/types/song";
 import { formatCount, formatDateTime, wasEdited } from "@/utils/formatDate";
 
@@ -51,7 +51,6 @@ function Dashboard() {
   }, [load]);
 
   const box = "divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface";
-  const action = "rounded-full px-3 py-1.5 text-sm";
   const views = posts.reduce((n, p) => n + p.view_count, 0);
   const plays = songs.reduce((n, s) => n + s.play_count, 0);
 
@@ -66,13 +65,13 @@ function Dashboard() {
             <p className="mt-1 text-sm text-muted">👁 {formatCount(views)} lượt đọc · ▶ {formatCount(plays)} lượt nghe</p>
           </div>
         </div>
-        {sent && <p className="mt-4 rounded-xl bg-green-50 p-3 text-green-800">Đã lưu! Nội dung đang chờ duyệt.</p>}
+        {sent && <p className="mt-4 rounded-xl bg-green-100 p-3 text-green-800">Đã lưu! Nội dung đang chờ duyệt.</p>}
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/viet-bai" className="rounded-full bg-ink px-5 py-2.5 font-medium text-paper">✍️ Viết bài / tải sách</Link>
-          <Link href="/tai-nhac" className="rounded-full border border-line bg-surface px-5 py-2.5 font-medium text-ink">⬆ Tải nhạc</Link>
-          <Link href="/album/moi" className="rounded-full border border-line bg-surface px-5 py-2.5 font-medium text-ink">💿 Tạo album</Link>
-          <Link href="/playlist" className="rounded-full border border-line bg-surface px-5 py-2.5 font-medium text-ink">♫ Playlist</Link>
-          <Link href="/ho-so" className="rounded-full border border-line bg-surface px-5 py-2.5 font-medium text-ink">👤 Hồ sơ</Link>
+          <Link href="/viet-bai" className="btn btn-primary">✍️ Viết bài / tải sách</Link>
+          <Link href="/tai-nhac" className="btn btn-secondary">⬆ Tải nhạc</Link>
+          <Link href="/album/moi" className="btn btn-secondary">💿 Tạo album</Link>
+          <Link href="/playlist" className="btn btn-secondary">♫ Playlist</Link>
+          <Link href="/ho-so" className="btn btn-secondary">👤 Hồ sơ</Link>
         </div>
       </section>
 
@@ -83,13 +82,14 @@ function Dashboard() {
             <div key={p.id} className="flex flex-wrap items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
                 <Link href={`/bai-viet/${p.slug}`} className="font-medium text-ink hover:underline">{p.title}</Link>
-                <span className="ml-2 text-xs text-muted">{CATEGORIES[p.category]?.label}{p.file_name && " · 📎"} · 👁 {formatCount(p.view_count)}</span>
+                <span className="ml-2 text-xs text-muted">{p.file_name && "📎 · "}👁 {formatCount(p.view_count)}</span>
+                {p.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1.5">{p.tags.map((t) => <span key={t} className="chip">#{t}</span>)}</div>}
                 <p className="mt-0.5 text-xs text-muted"><Times created={p.created_at} updated={p.updated_at} /></p>
               </div>
               <Status ok={p.is_published} />
-              <Link href={`/sua-bai/${p.id}`} className={`${action} border border-line text-ink hover:bg-soft`}>✏️ Sửa</Link>
-              <button type="button" className={`${action} text-red-600 hover:bg-soft`}
-                onClick={async () => { if (confirm("Xoá bài này?")) { await deletePost(p); load(); } }}>Xoá</button>
+              <Link href={`/sua-bai/${p.id}`} className="btn btn-secondary !py-1.5">✏️ Sửa</Link>
+              <button type="button" className="btn btn-danger !py-1.5"
+                onClick={async () => { if (confirm("Xoá bài này (kèm tệp đính kèm và ảnh trong bài)?")) { await deletePost(p); load(); } }}>Xoá</button>
             </div>
           ))}
           {!posts.length && <p className="p-4 text-sm text-muted">Chưa có bài viết.</p>}
@@ -105,8 +105,8 @@ function Dashboard() {
                 <Link href={`/album/${a.id}`} className="font-medium text-ink hover:underline">💿 {a.title}</Link>
                 <p className="mt-0.5 text-xs text-muted"><Times created={a.created_at} updated={a.updated_at} verb="Tạo" /></p>
               </div>
-              <Link href={`/album/sua/${a.id}`} className={`${action} border border-line text-ink hover:bg-soft`}>✏️ Sửa</Link>
-              <button type="button" className={`${action} text-red-600 hover:bg-soft`}
+              <Link href={`/album/sua/${a.id}`} className="btn btn-secondary !py-1.5">✏️ Sửa</Link>
+              <button type="button" className="btn btn-danger !py-1.5"
                 onClick={async () => { if (confirm("Xoá album? Bài hát vẫn được giữ lại.")) { await deleteAlbum(a); load(); } }}>Xoá</button>
             </div>
           ))}
@@ -127,9 +127,9 @@ function Dashboard() {
                 <p className="mt-0.5 text-xs text-muted"><Times created={s.created_at} updated={s.updated_at} verb="Tải lên" /></p>
               </div>
               <Status ok={s.is_published} />
-              <Link href={`/sua-nhac/${s.id}`} className={`${action} border border-line text-ink hover:bg-soft`}>✏️ Sửa</Link>
-              <button type="button" className={`${action} text-red-600 hover:bg-soft`}
-                onClick={async () => { if (confirm("Xoá bài hát này?")) { await deleteSong(s); load(); } }}>Xoá</button>
+              <Link href={`/sua-nhac/${s.id}`} className="btn btn-secondary !py-1.5">✏️ Sửa</Link>
+              <button type="button" className="btn btn-danger !py-1.5"
+                onClick={async () => { if (confirm("Xoá bài hát này (kèm tệp nhạc và ảnh bìa)?")) { await deleteSong(s); load(); } }}>Xoá</button>
             </div>
           ))}
           {!songs.length && <p className="p-4 text-sm text-muted">Chưa có bài hát.</p>}

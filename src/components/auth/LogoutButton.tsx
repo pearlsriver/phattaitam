@@ -12,7 +12,7 @@ export default function LogoutButton() {
         await signOut();
         router.push("/");
       }}
-      className="rounded-full px-3 py-2 text-sm text-muted hover:text-ink"
+      className="btn btn-ghost !py-2"
     >
       Đăng xuất
     </button>

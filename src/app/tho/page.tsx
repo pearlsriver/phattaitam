@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
-import CategoryPage from "@/components/posts/CategoryPage";
-import { CATEGORIES } from "@/types/post";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Thơ",
-  description: CATEGORIES["tho"].description,
-  alternates: { canonical: "/tho" },
-};
-
+/** Chuyên mục cũ đã được thay bằng hashtag */
 export default function Page() {
-  return <CategoryPage category="tho" />;
+  redirect("/thu-vien?tag=th%C6%A1");
 }

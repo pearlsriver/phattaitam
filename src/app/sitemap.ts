@@ -6,7 +6,7 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sb = serverSupabase();
-  const fixed = ["", "/thu-vien", "/nhac", "/album", "/cong-dong", "/van", "/tho", "/kinh-phat", "/thien"].map((p) => ({
+  const fixed = ["", "/thu-vien", "/sach", "/nhac", "/album", "/dieu-le"].map((p) => ({
     url: `${SITE_URL}${p}`,
     changeFrequency: "daily" as const,
     priority: p === "" ? 1 : 0.8,
@@ -20,8 +20,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...fixed,
-    ...(posts.data ?? []).map((p) => ({ url: `${SITE_URL}/bai-viet/${p.slug}`, lastModified: p.updated_at, priority: 0.7 })),
-    ...(songs.data ?? []).map((s) => ({ url: `${SITE_URL}/bai-hat/${s.id}`, lastModified: s.updated_at, priority: 0.6 })),
-    ...(albums.data ?? []).map((a) => ({ url: `${SITE_URL}/album/${a.id}`, lastModified: a.updated_at, priority: 0.6 })),
+    ...(posts.data ?? []).map((p: { slug: string; updated_at: string }) => ({ url: `${SITE_URL}/bai-viet/${p.slug}`, lastModified: p.updated_at, priority: 0.7 })),
+    ...(songs.data ?? []).map((s: { id: string; updated_at: string }) => ({ url: `${SITE_URL}/bai-hat/${s.id}`, lastModified: s.updated_at, priority: 0.6 })),
+    ...(albums.data ?? []).map((a: { id: string; updated_at: string }) => ({ url: `${SITE_URL}/album/${a.id}`, lastModified: a.updated_at, priority: 0.6 })),
   ];
 }

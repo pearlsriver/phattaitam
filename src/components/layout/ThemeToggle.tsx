@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MoonIcon, SunIcon } from "@/components/ui/Icons";
 
+/** Mặc định là giao diện tối; lựa chọn của người dùng được ghi nhớ. */
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains("dark"));
@@ -22,10 +24,11 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={dark ? "Chế độ sáng" : "Chế độ tối"}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-soft"
+      aria-label={dark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+      title={dark ? "Giao diện sáng" : "Giao diện tối"}
+      className="btn-icon border border-line"
     >
-      {dark ? "☀" : "☾"}
+      {dark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
     </button>
   );
 }
