@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ===== Bảng màu Thư Viện Số (sáng / tối) ===== */
+:root {
+  --paper: #f7f3ec;
+  --surface: #ffffff;
+  --soft: #efe8dc;
+  --line: #e4dccd;
+  --ink: #1f1a14;
+  --ink-soft: #4a4238;
+  --muted: #8a7f70;
+  --accent: #9a5b1e;
+  --accent-strong: #7c4714;
+  --accent-soft: #f3e3cc;
+  --gold: #c99a3b;
+}
+.dark {
+  --paper: #14110d;
+  --surface: #1d1914;
+  --soft: #26211a;
+  --line: #352e25;
+  --ink: #f3ece1;
+  --ink-soft: #d4c9b8;
+  --muted: #9b8f7e;
+  --accent: #e0a85a;
+  --accent-strong: #f0bd75;
+  --accent-soft: #3a2c1a;
+  --gold: #e0b75a;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-soft: var(--soft);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --font-sans: var(--font-sans-vi);
+  --font-serif: var(--font-serif-vi);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(60% 80% at 15% 10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    radial-gradient(50% 70% at 90% 90%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 70%),
+    var(--surface);
+}
+
+.book-cover {
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+  box-shadow: inset 6px 0 0 rgba(0, 0, 0, 0.18), 0 10px 25px -12px rgba(0, 0, 0, 0.45);
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.6rem 0.9rem;
+}
+.field:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+audio { color-scheme: light dark; }
+
+/* ===== Nội dung bài viết (trình soạn thảo + trang đọc) ===== */
+.rich-content {
+  font-family: var(--font-serif-vi), serif;
+  font-size: 1.125rem;
+  line-height: 1.9;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.rich-content > * + * { margin-top: 1em; }
+.rich-content h2 { font-size: 1.6em; font-weight: 600; line-height: 1.3; margin-top: 1.6em; }
+.rich-content h3 { font-size: 1.3em; font-weight: 600; line-height: 1.35; margin-top: 1.4em; }
+.rich-content a { color: var(--accent); text-decoration: underline; }
+.rich-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.2em 0 0.2em 1.1em;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.rich-content ul { list-style: disc; padding-left: 1.5em; }
+.rich-content ol { list-style: decimal; padding-left: 1.5em; }
+.rich-content li + li { margin-top: 0.3em; }
+.rich-content img { max-width: 100%; height: auto; border-radius: 1rem; margin: 1.2em auto; display: block; }
+.rich-content hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+.rich-editor:empty::before { content: attr(data-placeholder); color: var(--muted); }
