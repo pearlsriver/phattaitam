@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AddToPlaylist from "@/components/music/AddToPlaylist";
+import CoverImage from "@/components/ui/CoverImage";
 import { useAuth } from "@/hooks/useAuth";
 import { songCoverUrl, songDownloadUrl } from "@/services/songService";
 import type { Song } from "@/types/song";
@@ -27,22 +28,25 @@ export default function SongCard({
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-2xl border bg-surface p-3 transition ${
+      className={`flex items-center gap-3 rounded-2xl border bg-surface p-2.5 transition sm:p-3 ${
         active ? "border-accent ring-1 ring-accent" : "border-line hover:shadow-md"
       }`}
     >
-      {trackNo !== undefined && <span className="w-6 text-center text-sm text-muted">{trackNo}</span>}
+      {trackNo !== undefined && <span className="w-5 text-center text-sm text-muted sm:w-6">{trackNo}</span>}
       <button type="button" onClick={onPlay} className="group relative shrink-0" aria-label={`Phát ${song.title}`}>
-        {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt="" className="h-14 w-14 rounded-xl object-cover" />
-        ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent-soft text-2xl">🎵</div>
-        )}
-        <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/35 text-xl text-white opacity-0 transition group-hover:opacity-100">▶</span>
+        <CoverImage src={cover ?? "/logo-sm.png"} blur={false} className="h-12 w-12 rounded-xl sm:h-14 sm:w-14" />
+        <span className={`absolute inset-0 flex items-center justify-center rounded-xl bg-black/35 text-xl text-white transition ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+          {active ? "♪" : "▶"}
+        </span>
       </button>
-      <div className="min-w-0 flex-1">
-        <Link href={`/bai-hat/${song.id}`} className="block truncate font-medium text-ink hover:underline">{song.title}</Link>
+      {/* Điện thoại: chạm vào tên bài cũng phát nhạc */}
+      <button type="button" onClick={onPlay} className="min-w-0 flex-1 text-left sm:hidden">
+        <span className={`block truncate font-medium ${active ? "text-accent" : "text-ink"}`}>{song.title}</span>
+        <span className="block truncate text-xs text-muted">{song.artist ?? "Không rõ"}{song.album_info ? ` · ${song.album_info.title}` : ""}</span>
+        <span className="block text-[11px] text-muted">▶ {formatCount(song.play_count)}{song.lyrics ? " · có lời" : ""}</span>
+      </button>
+      <div className="hidden min-w-0 flex-1 sm:block">
+        <Link href={`/bai-hat/${song.id}`} className={`block truncate font-medium hover:underline ${active ? "text-accent" : "text-ink"}`}>{song.title}</Link>
         <p className="truncate text-sm text-muted">
           {song.artist ?? "Không rõ"}
           {song.album_info && (

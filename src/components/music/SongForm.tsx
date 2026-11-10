@@ -25,7 +25,8 @@ export default function SongForm({
   const [albums, setAlbums] = useState<Album[]>([]);
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? profile?.full_name ?? "");
-  const [albumId, setAlbumId] = useState<string>(song?.album_id ?? "");
+  // Bài Single (album solo) = "không chọn album"
+  const [albumId, setAlbumId] = useState<string>(song?.album_info?.is_solo ? "" : (song?.album_id ?? ""));
   const [trackNo, setTrackNo] = useState<string>(song?.track_no ? String(song.track_no) : "");
   const [lyrics, setLyrics] = useState(song?.lyrics ?? "");
   const [newAudio, setNewAudio] = useState<File | null>(null);
@@ -36,6 +37,7 @@ export default function SongForm({
 
   useEffect(() => {
     if (!user) return;
+    // Danh sách chỉ gồm album thật (không gồm các Single)
     (isAdmin ? listAlbums() : listAlbumsByOwner(user.id)).then(setAlbums).catch(() => {});
   }, [user, isAdmin]);
 
@@ -50,7 +52,7 @@ export default function SongForm({
     e.preventDefault();
     if (!song && !newAudio) return setError("Hãy chọn tệp nhạc.");
     if (newAudio && newAudio.size > limit) return setError(`Tệp nhạc vượt quá ${MAX_UPLOAD_MB} MB.`);
-    if (newCover && newCover.size > limit) return setError(`Ảnh bìa vượt quá ${MAX_UPLOAD_MB} MB.`);
+    if (newCover && newCover.size > 40 * 1024 * 1024) return setError("Ảnh bìa gốc quá lớn (tối đa 40 MB).");
     const n = parseInt(trackNo, 10);
     setBusy(true);
     setError(null);
@@ -76,7 +78,7 @@ export default function SongForm({
         <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
           {cover && !removeCover ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt="" className="h-20 w-20 rounded-xl object-cover" />
+            <img src={cover} alt="" className="h-20 w-20 rounded-xl object-contain" />
           ) : (
             <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-accent-soft text-3xl">🎵</div>
           )}
@@ -88,7 +90,7 @@ export default function SongForm({
         <span className="mb-2 block font-medium text-ink">
           🎵 {song ? "Thay tệp nhạc (không bắt buộc)" : "Tệp nhạc"} — MP3, M4A, WAV, OGG, tối đa {MAX_UPLOAD_MB} MB
         </span>
-        <input required={!song} type="file" accept="audio/*" onChange={(e) => pickAudio(e.target.files?.[0] ?? null)} />
+        <input required={!song} type="file" accept="audio/*" onChange={(e) => pickAudio(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
       </label>
 
       <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tên bài hát" className="field" />
@@ -96,7 +98,7 @@ export default function SongForm({
 
       <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
         <select value={albumId} onChange={(e) => setAlbumId(e.target.value)} className="field">
-          <option value="">— Không thuộc album —</option>
+          <option value="">— Không chọn album (Single) —</option>
           {albums.map((a) => (
             <option key={a.id} value={a.id}>{a.title}{isAdmin && a.owner?.full_name ? ` (${a.owner.full_name})` : ""}</option>
           ))}
@@ -104,6 +106,7 @@ export default function SongForm({
         <input type="number" min={1} value={trackNo} onChange={(e) => setTrackNo(e.target.value)} placeholder="Số thứ tự" className="field" />
       </div>
       <p className="-mt-2 text-xs text-muted">
+        Không chọn album: bài hát tự thành một <b>Single</b> (album solo) và vẫn có trang album riêng.{" "}
         Chưa có album? <Link href="/album/moi" target="_blank" className="text-accent hover:underline">Tạo album mới</Link> rồi tải lại trang này.
       </p>
 
@@ -117,21 +120,18 @@ export default function SongForm({
         <span className="mb-2 block font-medium text-ink">🖼 Ảnh bìa riêng (không bắt buộc — nếu trống sẽ dùng bìa album)</span>
         {song?.cover_path && !newCover && (
           <label className="mb-2 flex items-center gap-2">
-            <input type="checkbox" checked={removeCover} onChange={(e) => setRemoveCover(e.target.checked)} />
-            <span className="text-red-600">Xoá ảnh bìa hiện tại</span>
+            <input type="checkbox" checked={removeCover} onChange={(e) => setRemoveCover(e.target.checked)} className="accent-[var(--accent)]" />
+            <span className="text-red-500">Xoá ảnh bìa hiện tại</span>
           </label>
         )}
-        <input type="file" accept="image/*" onChange={(e) => { setNewCover(e.target.files?.[0] ?? null); setRemoveCover(false); }} />
+        <input type="file" accept="image/*" onChange={(e) => { setNewCover(e.target.files?.[0] ?? null); setRemoveCover(false); }} className="block w-full text-sm" />
+        <span className="mt-1 block text-[11px] text-muted">Ảnh lớn được tự nén xuống khoảng 1 MB khi tải lên.</span>
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
-      <div className="flex flex-wrap gap-3">
-        <button disabled={busy} className="rounded-full bg-ink px-7 py-3 font-medium text-paper hover:opacity-90 disabled:opacity-50">
-          {busy ? "Đang lưu…" : submitLabel}
-        </button>
-        {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-full border border-line px-6 py-3 text-ink-soft hover:bg-soft">Huỷ</button>
-        )}
+      {error && <p className="text-red-500">{error}</p>}
+      <div className="flex flex-col-reverse gap-3 sm:flex-row">
+        {onCancel && <button type="button" onClick={onCancel} className="btn btn-secondary !py-3">Huỷ</button>}
+        <button disabled={busy} className="btn btn-primary !px-7 !py-3 sm:order-first">{busy ? "Đang lưu…" : submitLabel}</button>
       </div>
     </form>
   );

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   title: { default: SITE_NAME, template: "%s · Phật Tại Tâm" },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
+  appleWebApp: { capable: true, title: "Phật Tại Tâm", statusBarStyle: "black-translucent" },
   openGraph: {
     type: "website",
     siteName: "Phật Tại Tâm",
@@ -27,6 +28,17 @@ export const metadata: Metadata = {
     images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION, images: [DEFAULT_OG_IMAGE] },
+};
+
+/* Điện thoại: dùng toàn màn hình (kể cả vùng tai thỏ), màu thanh trạng thái theo giao diện */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0d0b08" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f1e7" },
+  ],
 };
 
 /* Giao diện TỐI là mặc định; chỉ chuyển sang sáng khi người dùng đã chọn "light". */
@@ -42,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <PlayerProvider>
             <Header />
-            <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-44 pt-8">{children}</main>
+            <main className="safe-x mx-auto w-full max-w-6xl flex-1 pb-36 pt-5 sm:pt-8 md:pb-44">{children}</main>
             <Footer />
             <AudioPlayer />
             <TermsGate />

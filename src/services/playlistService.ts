@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { singleLabel } from "@/services/songService";
 import type { Playlist } from "@/types/social";
 import type { Song } from "@/types/song";
 
@@ -34,13 +35,14 @@ export async function deletePlaylist(id: string) {
 
 export async function listPlaylistSongs(playlistId: string): Promise<Song[]> {
   const { data, error } = await supabase.from("playlist_songs")
-    .select("added_at, song:songs(*, album_info:albums(id, title, cover_path))")
+    .select("added_at, song:songs(*, album_info:albums(id, title, cover_path, is_solo))")
     .eq("playlist_id", playlistId)
     .order("added_at", { ascending: true });
   if (error) throw error;
   return ((data ?? []) as unknown as { song: Song | null }[])
     .map((r) => r.song)
-    .filter((s): s is Song => !!s && s.is_published);
+    .filter((s): s is Song => !!s && s.is_published)
+    .map(singleLabel);
 }
 
 export async function addSongToPlaylist(playlistId: string, songId: string) {

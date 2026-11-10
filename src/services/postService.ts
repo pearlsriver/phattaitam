@@ -2,11 +2,19 @@ import { supabase } from "@/lib/supabase";
 import type { Post, PostInput } from "@/types/post";
 import { firstImage } from "@/utils/html";
 import { slugify } from "@/utils/slug";
-import { difference, imagePathsInHtml } from "@/utils/storagePaths";
+import { difference, imagePathFromUrl, imagePathsInHtml } from "@/utils/storagePaths";
 import { uniqueTags } from "@/utils/tags";
 import { removeFiles, uploadFile } from "@/services/storage";
 
 const SELECT = "*, author:profiles(full_name, avatar_url)";
+
+/** Mọi ảnh (thuộc kho images) mà bài viết đang dùng: ảnh trong nội dung + ảnh bìa */
+function imagesOf(content: string | null | undefined, cover: string | null | undefined): string[] {
+  const list = imagePathsInHtml(content);
+  const c = imagePathFromUrl(cover);
+  if (c && !list.includes(c)) list.push(c);
+  return list;
+}
 
 export async function listPublishedPosts(limit = 200): Promise<Post[]> {
   const { data, error } = await supabase.from("posts").select(SELECT).eq("is_published", true)
@@ -64,7 +72,7 @@ export async function createPost(input: PostInput, userId: string, publish: bool
     author_name: input.authorName.trim() || null,
     excerpt: input.excerpt.trim() || null,
     content: input.content,
-    cover_image: firstImage(input.content),
+    cover_image: input.coverImage || firstImage(input.content),
     file_path,
     file_name,
     is_published: publish,
@@ -78,7 +86,7 @@ export async function createPost(input: PostInput, userId: string, publish: bool
 }
 
 /** Sửa bài. Admin giữ trạng thái đăng; người dùng thường quay về "Chờ duyệt".
- *  Tệp đính kèm cũ và ảnh bị gỡ khỏi nội dung sẽ được xoá khỏi kho. */
+ *  Tệp đính kèm cũ, ảnh bìa cũ và ảnh bị gỡ khỏi nội dung sẽ được xoá khỏi kho. */
 export async function updatePost(post: Post, input: PostInput, userId: string, isAdmin: boolean): Promise<Post> {
   let file_path = post.file_path;
   let file_name = post.file_name;
@@ -96,13 +104,15 @@ export async function updatePost(post: Post, input: PostInput, userId: string, i
     oldToDelete = post.file_path;
   }
 
+  const cover_image = input.coverImage || firstImage(input.content);
+
   const { data, error } = await supabase.from("posts").update({
     title: input.title.trim(),
     tags: uniqueTags(input.tags),
     author_name: input.authorName.trim() || null,
     excerpt: input.excerpt.trim() || null,
     content: input.content,
-    cover_image: firstImage(input.content),
+    cover_image,
     file_path,
     file_name,
     is_published: isAdmin ? post.is_published : false,
@@ -113,7 +123,7 @@ export async function updatePost(post: Post, input: PostInput, userId: string, i
     throw error;
   }
   await removeFiles("books", [oldToDelete]);
-  await removeFiles("images", difference(imagePathsInHtml(post.content), imagePathsInHtml(input.content)));
+  await removeFiles("images", difference(imagesOf(post.content, post.cover_image), imagesOf(input.content, cover_image)));
   return data as Post;
 }
 
@@ -122,10 +132,10 @@ export async function setPostPublished(id: string, value: boolean) {
   if (error) throw error;
 }
 
-/** Xoá bài + tệp đính kèm + mọi ảnh đã chèn trong bài */
+/** Xoá bài + tệp đính kèm + ảnh bìa + mọi ảnh đã chèn trong bài */
 export async function deletePost(post: Post) {
   const { error } = await supabase.from("posts").delete().eq("id", post.id);
   if (error) throw error;
   await removeFiles("books", [post.file_path]);
-  await removeFiles("images", imagePathsInHtml(post.content));
+  await removeFiles("images", imagesOf(post.content, post.cover_image));
 }

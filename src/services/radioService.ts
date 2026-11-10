@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { listPublishedSongs } from "@/services/songService";
+import { listPublishedSongs, singleLabel } from "@/services/songService";
 import type { Song } from "@/types/song";
 
 export interface RadioSettings {
@@ -24,12 +24,13 @@ export async function saveRadioSettings(s: RadioSettings) {
 /** Danh sách bài do quản trị viên chọn, theo thứ tự (chỉ bài đã đăng) */
 export async function listRadioSongs(): Promise<Song[]> {
   const { data, error } = await supabase.from("radio_songs")
-    .select("position, song:songs(*, album_info:albums(id, title, cover_path))")
+    .select("position, song:songs(*, album_info:albums(id, title, cover_path, is_solo))")
     .order("position", { ascending: true });
   if (error) throw error;
   return ((data ?? []) as unknown as { song: Song | Song[] | null }[])
     .map((r) => (Array.isArray(r.song) ? r.song[0] : r.song))
-    .filter((s): s is Song => !!s && s.is_published);
+    .filter((s): s is Song => !!s && s.is_published)
+    .map(singleLabel);
 }
 
 /** Lưu toàn bộ danh sách radio (thay thế danh sách cũ) */

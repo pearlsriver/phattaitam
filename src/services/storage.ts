@@ -1,4 +1,5 @@
 import { MEDIA_URL, publicUrl, supabase, type Bucket } from "@/lib/supabase";
+import { compressImage } from "@/utils/imageCompress";
 import { safeFileName } from "@/utils/slug";
 import { imagePathFromUrl } from "@/utils/storagePaths";
 
@@ -11,10 +12,13 @@ async function accessToken(): Promise<string> {
 
 /**
  * Tải tệp lên kho lưu trữ và trả về đường dẫn "<userId>/<thời gian>-<tên tệp>".
+ * - Ảnh (kho "covers" và "images") luôn được TỰ NÉN xuống ~1 MB trước khi tải lên.
  * - Có NEXT_PUBLIC_MEDIA_URL: tải thẳng lên Cloudflare R2 (qua URL đã ký).
  * - Chưa có: dùng Supabase Storage như trước.
  */
 export async function uploadFile(bucket: Bucket, file: File, userId: string, prefix = ""): Promise<string> {
+  if (bucket === "covers" || bucket === "images") file = (await compressImage(file)).file;
+
   if (!MEDIA_URL) {
     const path = `${userId}/${prefix}${Date.now()}-${safeFileName(file.name)}`;
     const { error } = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type || undefined });
@@ -67,10 +71,10 @@ export async function removeImageUrls(urls: (string | null | undefined)[]) {
   await removeFiles("images", urls.map(imagePathFromUrl));
 }
 
-/** Tải ảnh (trong bài viết / ảnh đại diện) và trả về URL công khai */
+/** Tải ảnh (trong bài viết / ảnh bìa / ảnh đại diện) và trả về URL công khai. Ảnh lớn được tự nén ~1 MB. */
 export async function uploadImage(file: File, userId: string, prefix = ""): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("Chỉ chấp nhận tệp ảnh.");
-  if (file.size > 10 * 1024 * 1024) throw new Error("Ảnh tối đa 10 MB.");
+  if (file.size > 40 * 1024 * 1024) throw new Error("Ảnh gốc tối đa 40 MB.");
   const path = await uploadFile("images", file, userId, prefix);
   return publicUrl("images", path);
 }

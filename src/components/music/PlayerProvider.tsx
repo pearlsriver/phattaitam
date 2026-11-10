@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { countSongPlay } from "@/services/socialService";
-import { songAudioUrl } from "@/services/songService";
+import { songAudioUrl, songCoverUrl } from "@/services/songService";
 import type { Song } from "@/types/song";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -43,6 +43,33 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/** Đoán định dạng ảnh theo đuôi tệp (màn hình khoá cần biết loại ảnh) */
+function imageType(url: string): string {
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/png";
+}
+
+/**
+ * Ảnh cho màn hình khoá / trung tâm điều khiển (iPhone, iPad, Android, máy tính):
+ * ảnh bìa bài hát → bìa album → logo Phật Tại Tâm. Phải là địa chỉ tuyệt đối.
+ */
+function artworkFor(song: Song): MediaImage[] {
+  const origin = window.location.origin;
+  const cover = songCoverUrl(song);
+  if (cover) {
+    const abs = cover.startsWith("http") ? cover : `${origin}${cover}`;
+    const type = imageType(abs);
+    return ["96x96", "192x192", "256x256", "384x384", "512x512"].map((sizes) => ({ src: abs, sizes, type }));
+  }
+  return [
+    { src: `${origin}/logo-sm.png`, sizes: "128x128", type: "image/png" },
+    { src: `${origin}/logo.png`, sizes: "512x512", type: "image/png" },
+  ];
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
@@ -166,8 +193,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const seek = useCallback((s: number) => {
     const a = audioRef.current;
     if (a && Number.isFinite(s)) {
-      a.currentTime = s;
-      setCurrentTime(s);
+      a.currentTime = Math.max(0, Math.min(s, a.duration || s));
+      setCurrentTime(a.currentTime);
     }
   }, []);
 
@@ -195,6 +222,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setRadio(false);
     setSource(null);
     setPlaying(false);
+    if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = "none";
+    }
   }, []);
 
   /* Hết bài: lặp một bài / bài kế tiếp / lặp lại danh sách / dừng */
@@ -209,33 +240,71 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     else setPlaying(false);
   }, [repeat, index, queue.length, radio, next]);
 
-  /* Điều khiển từ màn hình khoá / tai nghe */
+  /* ===== Màn hình khoá / tai nghe / trung tâm điều khiển ===== */
   useEffect(() => {
     if (!current || typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
-    const ms = navigator.mediaSession;
-    ms.metadata = new MediaMetadata({
+    navigator.mediaSession.metadata = new MediaMetadata({
       title: current.title,
       artist: current.artist ?? "Phật Tại Tâm",
-      album: current.album_info?.title ?? source ?? "",
+      album: current.album_info?.title ?? source ?? "Phật Tại Tâm",
+      artwork: artworkFor(current),
     });
-    ms.setActionHandler("play", () => audioRef.current?.play().catch(() => {}));
-    ms.setActionHandler("pause", () => audioRef.current?.pause());
-    ms.setActionHandler("nexttrack", next);
-    ms.setActionHandler("previoustrack", prev);
-    ms.setActionHandler("seekto", (d) => { if (typeof d.seekTime === "number") seek(d.seekTime); });
-  }, [current, source, next, prev, seek]);
+  }, [current, source]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try { ms.setActionHandler(action, handler); } catch {}
+    };
+    set("play", () => audioRef.current?.play().catch(() => {}));
+    set("pause", () => audioRef.current?.pause());
+    set("nexttrack", next);
+    set("previoustrack", prev);
+    set("seekto", (d) => { if (typeof d.seekTime === "number") seek(d.seekTime); });
+    set("seekbackward", (d) => seek((audioRef.current?.currentTime ?? 0) - (d.seekOffset || 10)));
+    set("seekforward", (d) => seek((audioRef.current?.currentTime ?? 0) + (d.seekOffset || 10)));
+  }, [next, prev, seek]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.playbackState = current ? (playing ? "playing" : "paused") : "none";
+  }, [playing, current]);
+
+  /* Thanh thời gian trên màn hình khoá */
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !duration || !Number.isFinite(duration)) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        playbackRate: audioRef.current?.playbackRate || 1,
+        position: Math.min(currentTime, duration),
+      });
+    } catch {}
+    // Cập nhật mỗi khi đổi bài, phát/dừng hoặc tua — không cần mỗi giây
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duration, playing, current?.id]);
+
+  const seekAndSync = useCallback((s: number) => {
+    seek(s);
+    const a = audioRef.current;
+    if (a && "mediaSession" in navigator && a.duration) {
+      try { navigator.mediaSession.setPositionState({ duration: a.duration, playbackRate: a.playbackRate || 1, position: a.currentTime }); } catch {}
+    }
+  }, [seek]);
 
   return (
     <PlayerContext.Provider
       value={{
         current, queue, index, radio, source, playing, currentTime, duration, volume, muted, repeat,
-        playSong, playList, startRadio, togglePlay, next, prev, jumpTo, seek, setVolume, toggleMute, cycleRepeat, stop,
+        playSong, playList, startRadio, togglePlay, next, prev, jumpTo, seek: seekAndSync, setVolume, toggleMute, cycleRepeat, stop,
       }}
     >
       {children}
       <audio
         ref={audioRef}
         preload="auto"
+        playsInline
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}

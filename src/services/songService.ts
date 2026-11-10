@@ -2,7 +2,15 @@ import { publicUrl, supabase } from "@/lib/supabase";
 import type { Song, SongInput } from "@/types/song";
 import { removeFiles, uploadFile } from "@/services/storage";
 
-const SELECT = "*, album_info:albums(id, title, cover_path)";
+const SELECT = "*, album_info:albums(id, title, cover_path, is_solo)";
+
+/**
+ * Bài hát Single (album solo): album trùng tên bài hát nên hiển thị nhãn "Single"
+ * thay vì lặp lại tên bài ("Tên bài · Tên bài").
+ */
+export function singleLabel<T extends Song>(s: T): T {
+  return s.album_info?.is_solo ? { ...s, album_info: { ...s.album_info, title: "Single" } } : s;
+}
 
 function base() {
   return supabase.from("songs").select(SELECT);
@@ -10,7 +18,7 @@ function base() {
 
 function done(res: { data: unknown; error: unknown }): Song[] {
   if (res.error) throw res.error;
-  return (res.data ?? []) as Song[];
+  return ((res.data ?? []) as Song[]).map(singleLabel);
 }
 
 export async function listPublishedSongs(): Promise<Song[]> {
@@ -43,9 +51,10 @@ export async function listAlbumSongs(albumId: string): Promise<Song[]> {
 export async function getSongById(id: string): Promise<Song | null> {
   const { data, error } = await base().eq("id", id).maybeSingle();
   if (error) throw error;
-  return data as Song | null;
+  return data ? singleLabel(data as Song) : null;
 }
 
+/** Không chọn album (albumId = null): máy chủ tự tạo album solo (Single) cho bài hát. */
 export async function uploadSong(input: SongInput, userId: string, publish: boolean): Promise<Song> {
   if (!input.newAudio) throw new Error("Hãy chọn tệp nhạc.");
   const audio_path = await uploadFile("music", input.newAudio, userId);
@@ -105,10 +114,13 @@ export async function updateSong(song: Song, input: SongInput, userId: string, i
     throw e;
   }
 
+  // Đang là Single mà không chọn album → giữ nguyên album solo hiện tại (giữ nguyên đường dẫn, lượt thích, bình luận)
+  const album_id = input.albumId ?? (song.album_info?.is_solo ? song.album_id : null);
+
   const { data, error } = await supabase.from("songs").update({
     title: input.title.trim(),
     artist: input.artist.trim() || null,
-    album_id: input.albumId,
+    album_id,
     track_no: input.trackNo,
     lyrics: input.lyrics.trim() || null,
     audio_path,
@@ -131,19 +143,20 @@ export async function setSongPublished(id: string, value: boolean) {
   if (error) throw error;
 }
 
+/** Xoá bài hát + tệp nhạc + ảnh bìa (album solo của bài cũng tự xoá theo) */
 export async function deleteSong(song: Song) {
-  await removeFiles("music", [song.audio_path]);
-  await removeFiles("covers", [song.cover_path]);
   const { error } = await supabase.from("songs").delete().eq("id", song.id);
   if (error) throw error;
+  await removeFiles("music", [song.audio_path]);
+  await removeFiles("covers", [song.cover_path]);
 }
 
 export const songAudioUrl = (s: Song) => publicUrl("music", s.audio_path);
 export const songDownloadUrl = (s: Song) => publicUrl("music", s.audio_path, true);
+/** Đường dẫn ảnh bìa của bài hát: ảnh riêng → bìa album */
+export const songCoverPath = (s: Song): string | null => s.cover_path ?? s.album_info?.cover_path ?? null;
 /** Ảnh bìa bài hát; nếu không có thì dùng bìa album */
-export const songCoverUrl = (s: Song) =>
-  s.cover_path
-    ? publicUrl("covers", s.cover_path)
-    : s.album_info?.cover_path
-      ? publicUrl("covers", s.album_info.cover_path)
-      : null;
+export const songCoverUrl = (s: Song) => {
+  const p = songCoverPath(s);
+  return p ? publicUrl("covers", p) : null;
+};

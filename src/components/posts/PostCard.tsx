@@ -1,11 +1,12 @@
 import Link from "next/link";
+import CoverImage from "@/components/ui/CoverImage";
 import Avatar from "@/components/social/Avatar";
 import type { Post } from "@/types/post";
 import { authorLabel } from "@/types/post";
 import { formatCount, formatDate } from "@/utils/formatDate";
 import { plainExcerpt } from "@/utils/html";
 
-/** Thẻ bài viết: hashtag, tác giả, người đăng */
+/** Thẻ bài viết: ảnh bìa vừa khung, hashtag, tác giả, người đăng */
 export default function PostCard({ post }: { post: Post }) {
   const text = post.excerpt || plainExcerpt(post.content, 240);
   return (
@@ -13,10 +14,7 @@ export default function PostCard({ post }: { post: Post }) {
       href={`/bai-viet/${post.slug}`}
       className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface transition duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-xl"
     >
-      {post.cover_image && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.cover_image} alt="" className="h-40 w-full object-cover" loading="lazy" />
-      )}
+      {post.cover_image && <CoverImage src={post.cover_image} className="h-44 w-full" />}
       <div className="flex flex-1 flex-col p-6">
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

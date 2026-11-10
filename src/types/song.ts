@@ -12,12 +12,14 @@ export interface Song {
   is_published: boolean;
   created_at: string;
   updated_at: string;
-  album_info?: { id: string; title: string; cover_path: string | null } | null;
+  /** Với bài Single (album solo), title được hiển thị là "Single" */
+  album_info?: { id: string; title: string; cover_path: string | null; is_solo?: boolean } | null;
 }
 
 export interface SongInput {
   title: string;
   artist: string;
+  /** null = không chọn album → bài hát là một Single (album solo) */
   albumId: string | null;
   trackNo: number | null;
   lyrics: string;
