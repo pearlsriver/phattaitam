@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { EditableText } from "@/components/site/Editable";
 
 export default function Footer() {
   return (
     <footer className="mt-20 border-t border-line py-10 text-center text-sm text-muted">
-      <p className="font-serif text-base text-ink-soft">Phật Tại Tâm — Thư Viện Số</p>
-      <p className="mt-1">Phụng sự Phật pháp – Lan tỏa yêu thương – Chia sẻ vô cầu</p>
+      <EditableText as="p" k="footer.title" label="Chân trang — tiêu đề" className="font-serif text-base text-ink-soft" />
+      <EditableText as="p" k="footer.motto" label="Chân trang — khẩu hiệu" className="mt-1" />
       <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-        <Link href="/dieu-le" className="text-accent hover:underline">Điều lệ tham gia &amp; chia sẻ nội dung</Link>
-        <span>© {new Date().getFullYear()} phattaitam.com</span>
+        <Link href="/dieu-le" className="text-accent hover:underline">
+          <EditableText k="footer.termsLabel" label="Chân trang — liên kết Điều lệ" />
+        </Link>
+        <span>© {new Date().getFullYear()} <EditableText k="footer.copyright" label="Chân trang — bản quyền" /></span>
       </p>
     </footer>
   );

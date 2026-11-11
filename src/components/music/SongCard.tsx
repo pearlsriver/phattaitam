@@ -6,7 +6,7 @@ import CoverImage from "@/components/ui/CoverImage";
 import { useAuth } from "@/hooks/useAuth";
 import { songCoverUrl, songDownloadUrl } from "@/services/songService";
 import type { Song } from "@/types/song";
-import { formatCount } from "@/utils/formatDate";
+import { formatCount, formatDuration } from "@/utils/formatDate";
 
 export default function SongCard({
   song,
@@ -25,6 +25,8 @@ export default function SongCard({
   const cover = songCoverUrl(song);
   const canEdit = !!user && (user.id === song.uploader_id || isAdmin);
   const iconBtn = "flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-soft hover:bg-soft";
+  const dur = formatDuration(song.duration_seconds);
+  const album = song.album_info;
 
   return (
     <div
@@ -42,22 +44,28 @@ export default function SongCard({
       {/* Điện thoại: chạm vào tên bài cũng phát nhạc */}
       <button type="button" onClick={onPlay} className="min-w-0 flex-1 text-left sm:hidden">
         <span className={`block truncate font-medium ${active ? "text-accent" : "text-ink"}`}>{song.title}</span>
-        <span className="block truncate text-xs text-muted">{song.artist ?? "Không rõ"}{song.album_info ? ` · ${song.album_info.title}` : ""}</span>
-        <span className="block text-[11px] text-muted">▶ {formatCount(song.play_count)}{song.lyrics ? " · có lời" : ""}</span>
+        <span className="block truncate text-xs text-muted">{song.artist ?? "Không rõ"}{album ? ` · ${album.title}` : ""}</span>
+        <span className="block text-[11px] text-muted">{dur && `${dur} · `}▶ {formatCount(song.play_count)}{song.lyrics ? " · có lời" : ""}</span>
       </button>
       <div className="hidden min-w-0 flex-1 sm:block">
         <Link href={`/bai-hat/${song.id}`} className={`block truncate font-medium hover:underline ${active ? "text-accent" : "text-ink"}`}>{song.title}</Link>
         <p className="truncate text-sm text-muted">
           {song.artist ?? "Không rõ"}
-          {song.album_info && (
+          {album && (
             <>
               {" · "}
-              <Link href={`/album/${song.album_info.id}`} className="hover:underline">{song.album_info.title}</Link>
+              {/* Đĩa đơn chỉ là thông tin, không có trang riêng */}
+              {album.is_solo ? (
+                <span>{album.title}</span>
+              ) : (
+                <Link href={`/album/${album.id}`} className="hover:underline">{album.title}</Link>
+              )}
             </>
           )}
         </p>
         <p className="text-xs text-muted">▶ {formatCount(song.play_count)} lượt nghe{song.lyrics ? " · có lời" : ""}</p>
       </div>
+      {dur && <span className="hidden shrink-0 text-sm tabular-nums text-muted sm:inline">{dur}</span>}
       <div className="flex shrink-0 items-center gap-1">
         {extra}
         <AddToPlaylist songId={song.id} />

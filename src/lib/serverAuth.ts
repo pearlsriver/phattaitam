@@ -20,7 +20,8 @@ export async function authUser(req: Request): Promise<AuthInfo | null> {
   if (error || !data.user) return null;
 
   const { data: profile } = await sb.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-  return { userId: data.user.id, isAdmin: profile?.role === "admin" };
+  const role = profile?.role;
+  return { userId: data.user.id, isAdmin: role === "admin" || role === "super_admin" };
 }
 
 export function jsonError(message: string, status = 400) {

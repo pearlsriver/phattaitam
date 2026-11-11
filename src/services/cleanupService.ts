@@ -21,7 +21,7 @@ export const BUCKET_LABELS: Record<Bucket, string> = {
   books: "Sách / tài liệu",
   music: "Nhạc",
   covers: "Ảnh bìa (bài hát, album)",
-  images: "Ảnh trong bài & ảnh đại diện",
+  images: "Ảnh trong bài, ảnh đại diện & logo",
 };
 
 export const STORAGE_FREE_LIMIT = 10 * 1024 ** 3; // 10 GB — gói miễn phí Cloudflare R2
@@ -48,11 +48,12 @@ async function listBucket(bucket: Bucket): Promise<StoredFile[]> {
 async function collectReferences(): Promise<Record<Bucket, Set<string>>> {
   const refs: Record<Bucket, Set<string>> = { books: new Set(), music: new Set(), covers: new Set(), images: new Set() };
 
-  const [posts, songs, albums, profiles] = await Promise.all([
+  const [posts, songs, albums, profiles, settings] = await Promise.all([
     supabase.from("posts").select("content, file_path, cover_image"),
     supabase.from("songs").select("audio_path, cover_path"),
     supabase.from("albums").select("cover_path"),
     supabase.from("profiles").select("avatar_url"),
+    supabase.from("site_settings").select("value"),
   ]);
   for (const r of [posts, songs, albums, profiles]) if (r.error) throw r.error;
 
@@ -70,6 +71,13 @@ async function collectReferences(): Promise<Record<Bucket, Set<string>>> {
   for (const pr of profiles.data ?? []) {
     const path = imagePathFromUrl(pr.avatar_url);
     if (path) refs.images.add(path);
+  }
+  // Logo và ảnh trong Cài đặt trang
+  for (const row of (settings.data ?? []) as { value: unknown }[]) {
+    if (typeof row.value === "string") {
+      const path = imagePathFromUrl(row.value);
+      if (path) refs.images.add(path);
+    }
   }
   return refs;
 }

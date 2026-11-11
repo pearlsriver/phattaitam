@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import AlbumCard from "@/components/music/AlbumCard";
+import { EditableText as T } from "@/components/site/Editable";
 import { useAsync } from "@/hooks/useAsync";
 import { useAuth } from "@/hooks/useAuth";
 import { listAlbums } from "@/services/albumService";
@@ -29,11 +30,11 @@ export default function AlbumsPage() {
 
   return (
     <div>
-      <p className="text-xs uppercase tracking-[0.2em] text-muted">Âm nhạc</p>
+      <T as="p" k="albums.eyebrow" label="Trang Album — nhãn nhỏ" className="block text-xs uppercase tracking-[0.2em] text-muted" />
       <div className="mb-6 mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-semibold text-ink sm:text-4xl">Album</h1>
-          <p className="mt-2 text-ink-soft">Những tuyển tập nhạc và các Single — nghe trọn album hoặc bật radio theo từng album.</p>
+          <T as="h1" k="albums.title" label="Trang Album — tiêu đề" className="block font-serif text-3xl font-semibold text-ink sm:text-4xl" />
+          <T as="p" k="albums.desc" multiline label="Trang Album — mô tả" className="mt-2 block text-ink-soft" />
         </div>
         {user && <Link href="/album/moi" className="btn btn-primary">＋ Tạo album</Link>}
       </div>
@@ -41,7 +42,7 @@ export default function AlbumsPage() {
       <div className="mb-8 flex flex-wrap gap-2">
         {chip("all", "Tất cả")}
         {chip("album", "Album")}
-        {chip("single", "Single")}
+        {chip("single", "Đĩa đơn")}
       </div>
 
       {loading && <p className="text-muted">Đang tải…</p>}

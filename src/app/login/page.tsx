@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import SiteLogo from "@/components/site/SiteLogo";
+import { useSite } from "@/components/site/SiteSettingsProvider";
 import { resetPassword, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/auth";
 import { TERMS_CHECKBOX_TEXT } from "@/lib/terms";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +14,7 @@ type Mode = "login" | "signup";
 export default function LoginPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { text } = useSite();
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -55,12 +58,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="hero-glow mx-auto max-w-md rounded-[2rem] border border-line p-8 shadow-xl">
+    <div className="hero-glow mx-auto max-w-md rounded-[2rem] border border-line p-6 shadow-xl sm:p-8">
       <div className="text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-sm.png" alt="Phật Tại Tâm" width={72} height={72} className="mx-auto h-[72px] w-[72px] rounded-full" />
+        <SiteLogo size="sm" className="mx-auto h-[72px] w-[72px] rounded-full" />
         <h1 className="mt-4 font-serif text-3xl font-semibold text-ink">{mode === "login" ? "Chào mừng trở lại" : "Tạo tài khoản"}</h1>
-        <p className="mt-1 text-sm text-muted">Thư Viện Số Phật Tại Tâm</p>
+        <p className="mt-1 text-sm text-muted">{text("site.eyebrow")} {text("site.name")}</p>
       </div>
 
       <button type="button" onClick={() => signInWithGoogle().catch((e) => setMsg({ type: "err", text: e.message }))}
@@ -74,7 +76,7 @@ export default function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        {mode === "signup" && <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Họ và tên" className="field" />}
+        {mode === "signup" && <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Họ và tên / nickname" className="field" />}
         <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
         <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu (ít nhất 6 ký tự)" className="field" />
 

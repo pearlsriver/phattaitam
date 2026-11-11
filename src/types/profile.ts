@@ -1,4 +1,5 @@
-export type Role = "user" | "admin";
+/** user = Thành viên mới · vip = VIP · admin = Admin · super_admin = Super Admin */
+export type Role = "user" | "vip" | "admin" | "super_admin";
 
 export interface Profile {
   id: string;

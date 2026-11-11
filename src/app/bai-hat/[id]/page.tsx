@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/supabase";
 import { getSongById, songCoverPath, songCoverUrl, songDownloadUrl } from "@/services/songService";
 import { coverFileName } from "@/utils/download";
-import { formatCount, formatDateTime, wasEdited } from "@/utils/formatDate";
+import { formatCount, formatDateTime, formatDuration, wasEdited } from "@/utils/formatDate";
 
 export default function SongPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +31,7 @@ export default function SongPage() {
   const canEdit = !!user && (user.id === song.uploader_id || isAdmin);
   const playing = current?.id === song.id;
   const solo = !!song.album_info?.is_solo;
+  const dur = formatDuration(song.duration_seconds);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -49,23 +50,20 @@ export default function SongPage() {
           )}
         </div>
         <div className="flex flex-col justify-end">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted">{solo ? "Single" : "Bài hát"}</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted">{solo ? "Đĩa đơn" : "Bài hát"}</p>
           <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight text-ink sm:text-4xl md:text-5xl">{song.title}</h1>
           <p className="mt-3 text-ink-soft">
             {song.artist ?? "Không rõ"}
-            {song.album_info && (
+            {/* Đĩa đơn: không hiện liên kết. Bài thuộc album: liên kết tới album. */}
+            {song.album_info && !solo && (
               <>
-                {" · "}
-                {solo ? (
-                  <Link href={`/album/${song.album_info.id}`} className="text-accent hover:underline">Trang Single</Link>
-                ) : (
-                  <>Album <Link href={`/album/${song.album_info.id}`} className="text-accent hover:underline">{song.album_info.title}</Link></>
-                )}
+                {" · "}Album{" "}
+                <Link href={`/album/${song.album_info.id}`} className="text-accent hover:underline">{song.album_info.title}</Link>
               </>
             )}
           </p>
           <p className="mt-1 text-sm text-muted">
-            ▶ {formatCount(song.play_count)} lượt nghe · Tải lên {formatDateTime(song.created_at)}
+            {dur && `⏱ ${dur} · `}▶ {formatCount(song.play_count)} lượt nghe · Tải lên {formatDateTime(song.created_at)}
             {wasEdited(song.created_at, song.updated_at) && ` · Sửa ${formatDateTime(song.updated_at)}`}
             {!song.is_published && <span className="ml-2 rounded bg-yellow-100 px-2 text-yellow-800">Chờ duyệt</span>}
           </p>

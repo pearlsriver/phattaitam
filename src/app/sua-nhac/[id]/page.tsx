@@ -12,7 +12,7 @@ import { formatDateTime, wasEdited } from "@/utils/formatDate";
 function Edit() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, canPublish } = useAuth();
   const { data: song, loading } = useAsync(() => getSongById(id), [id], null);
 
   if (loading) return <p className="py-16 text-center text-muted">Đang tải…</p>;
@@ -27,7 +27,7 @@ function Edit() {
         Tải lên lúc {formatDateTime(song.created_at)}
         {wasEdited(song.created_at, song.updated_at) && ` · Sửa lần cuối ${formatDateTime(song.updated_at)}`}
       </p>
-      {!isAdmin && song.is_published && (
+      {!canPublish && song.is_published && (
         <p className="rounded-xl bg-accent-soft p-3 text-sm text-ink-soft">Sau khi lưu, bài hát sẽ chuyển về trạng thái <b>Chờ duyệt</b>.</p>
       )}
       <SongForm
@@ -35,8 +35,8 @@ function Edit() {
         submitLabel="Lưu thay đổi"
         onCancel={() => router.back()}
         onSubmit={async (input) => {
-          await updateSong(song, input, user.id, isAdmin);
-          router.push(isAdmin ? `/bai-hat/${song.id}` : "/dashboard?sent=1");
+          await updateSong(song, input, user.id, canPublish);
+          router.push(canPublish ? `/bai-hat/${song.id}` : "/dashboard?sent=1");
         }}
       />
     </div>

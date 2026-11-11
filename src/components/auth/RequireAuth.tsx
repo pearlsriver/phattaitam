@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 
-export default function RequireAuth({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
-  const { user, isAdmin, loading } = useAuth();
+export default function RequireAuth({
+  children,
+  admin = false,
+  superAdmin = false,
+}: {
+  children: React.ReactNode;
+  admin?: boolean;
+  superAdmin?: boolean;
+}) {
+  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
 
   if (loading) return <p className="py-16 text-center text-muted">Đang tải…</p>;
 
@@ -12,11 +20,12 @@ export default function RequireAuth({ children, admin = false }: { children: Rea
     return (
       <div className="py-16 text-center">
         <p className="mb-4 text-ink-soft">Vui lòng đăng nhập để tiếp tục.</p>
-        <Link href="/login" className="rounded-full bg-ink px-5 py-2.5 text-paper">Đăng nhập</Link>
+        <Link href="/login" className="btn btn-primary">Đăng nhập</Link>
       </div>
     );
 
-  if (admin && !isAdmin) return <p className="py-16 text-center text-ink-soft">Bạn không có quyền truy cập trang này.</p>;
+  if ((admin && !isAdmin) || (superAdmin && !isSuperAdmin))
+    return <p className="py-16 text-center text-ink-soft">Bạn không có quyền truy cập trang này.</p>;
 
   return <>{children}</>;
 }

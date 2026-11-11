@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { deletePost, listAllPosts, setPostPublished } from "@/services/postService";
-import { deleteSong, listAllSongs, setSongPublished } from "@/services/songService";
+import { deleteSong, listAllSongs, setSongDuration, setSongPublished, songAudioUrl } from "@/services/songService";
 import type { Post } from "@/types/post";
 import { authorLabel } from "@/types/post";
 import type { Song } from "@/types/song";
-import { formatCount, formatDateTime, wasEdited } from "@/utils/formatDate";
+import { readAudioDuration } from "@/utils/audioDuration";
+import { formatCount, formatDateTime, formatDuration, wasEdited } from "@/utils/formatDate";
 
 function Times({ created, updated, verb }: { created: string; updated: string; verb: string }) {
   return (
@@ -24,6 +25,7 @@ function Admin() {
   const [onlyPending, setOnlyPending] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
+  const [measure, setMeasure] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [p, s] = await Promise.all([listAllPosts(), listAllSongs()]);
@@ -39,15 +41,32 @@ function Admin() {
   const pendingSongs = songs.filter((s) => !s.is_published).length;
   const shownPosts = onlyPending ? posts.filter((p) => !p.is_published) : posts;
   const shownSongs = onlyPending ? songs.filter((s) => !s.is_published) : songs;
+  const noDuration = songs.filter((s) => !s.duration_seconds);
   const tabCls = (on: boolean) => `btn ${on ? "btn-primary" : "btn-secondary"}`;
   const small = "!py-1.5";
+
+  /** Đo thời lượng các bài hát cũ chưa có */
+  async function measureAll() {
+    let ok = 0;
+    for (let i = 0; i < noDuration.length; i++) {
+      const s = noDuration[i];
+      setMeasure(`Đang đo ${i + 1}/${noDuration.length}: ${s.title}`);
+      const d = await readAudioDuration(songAudioUrl(s));
+      if (d) {
+        try { await setSongDuration(s.id, d); ok++; } catch {}
+      }
+    }
+    setMeasure(`Đã đo xong ${ok}/${noDuration.length} bài.`);
+    load();
+  }
 
   return (
     <div>
       <p className="text-xs uppercase tracking-[0.2em] text-muted">Quản trị</p>
       <div className="mb-6 mt-2 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="font-serif text-4xl font-semibold text-ink">Quản trị nội dung</h1>
+        <h1 className="font-serif text-3xl font-semibold text-ink sm:text-4xl">Quản trị nội dung</h1>
         <div className="flex flex-wrap gap-2">
+          <Link href="/admin/thanh-vien" className="btn btn-secondary">👥 Thành viên</Link>
           <Link href="/admin/radio" className="btn btn-secondary">📻 Quản lý Radio</Link>
           <Link href="/admin/don-dep" className="btn btn-secondary">🧹 Dọn dẹp kho lưu trữ</Link>
         </div>
@@ -59,6 +78,17 @@ function Admin() {
           <input type="checkbox" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} className="accent-[var(--accent)]" /> Chỉ hiện mục chờ duyệt
         </label>
       </div>
+
+      {tab === "songs" && (noDuration.length > 0 || measure) && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-3 text-sm">
+          {noDuration.length > 0 && (
+            <button type="button" className="btn btn-secondary !py-1.5" disabled={!!measure && measure.startsWith("Đang")} onClick={measureAll}>
+              ⏱ Đo thời lượng ({noDuration.length} bài chưa có)
+            </button>
+          )}
+          {measure && <span className="text-muted">{measure}</span>}
+        </div>
+      )}
 
       <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
         {tab === "posts" &&
@@ -85,7 +115,9 @@ function Admin() {
             <div key={s.id} className="flex flex-wrap items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
                 <Link href={`/bai-hat/${s.id}`} className="font-medium text-ink hover:underline">{s.title}</Link>
-                <p className="text-xs text-muted">{s.artist}{s.album_info && ` · ${s.album_info.title}`} · ▶ {formatCount(s.play_count)}</p>
+                <p className="text-xs text-muted">
+                  {s.artist}{s.album_info && ` · ${s.album_info.title}`} · {formatDuration(s.duration_seconds) || "chưa có thời lượng"} · ▶ {formatCount(s.play_count)}
+                </p>
                 <p className="text-xs text-muted"><Times created={s.created_at} updated={s.updated_at} verb="Tải lên" /></p>
               </div>
               <button type="button" onClick={async () => { await setSongPublished(s.id, !s.is_published); load(); }}

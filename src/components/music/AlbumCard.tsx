@@ -1,16 +1,16 @@
 import Link from "next/link";
 import CoverImage from "@/components/ui/CoverImage";
-import { albumCoverUrl, albumSongCount } from "@/services/albumService";
+import { albumCoverUrl, albumHref, albumSongCount } from "@/services/albumService";
 import type { Album } from "@/types/album";
 
-/** Thẻ album: ảnh bìa (chưa có thì dùng logo trang web) + nhãn "Single" hoặc số bài hát */
+/** Thẻ album: ảnh bìa (chưa có thì dùng logo) + nhãn "Đĩa đơn" hoặc số bài. Đĩa đơn mở thẳng trang bài hát. */
 export default function AlbumCard({ album }: { album: Album }) {
   const cover = albumCoverUrl(album);
   const count = albumSongCount(album);
-  const badge = album.is_solo ? "Single" : count > 0 ? `${count} bài` : "Chưa có bài";
+  const badge = album.is_solo ? "Đĩa đơn" : count > 0 ? `${count} bài` : "Chưa có bài";
 
   return (
-    <Link href={`/album/${album.id}`} className="group block">
+    <Link href={albumHref(album)} className="group block">
       <div className="relative aspect-square overflow-hidden rounded-2xl border border-line bg-accent-soft shadow-sm transition group-hover:-translate-y-1 group-hover:shadow-lg">
         {cover ? (
           <CoverImage src={cover} className="h-full w-full" />

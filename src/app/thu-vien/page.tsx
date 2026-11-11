@@ -8,12 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function LibraryPage() {
-  return (
-    <PostBrowser
-      mode="all"
-      eyebrow="Thư viện"
-      title="Khám phá thư viện"
-      subtitle="Bài viết, văn thơ, kinh điển và suy niệm — lọc theo hashtag để tìm điều bạn cần."
-    />
-  );
+  return <PostBrowser mode="all" />;
 }

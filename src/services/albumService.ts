@@ -2,11 +2,11 @@ import { publicUrl, supabase } from "@/lib/supabase";
 import type { Album, AlbumInput } from "@/types/album";
 import { removeFiles, uploadFile } from "@/services/storage";
 
-/** solo_songs: các bài hát của album — dùng để đếm số bài và lấy ảnh bìa cho album solo (Single) */
-const SELECT = "*, owner:profiles(full_name), solo_songs:songs(cover_path, is_published)";
+/** solo_songs: các bài hát của album — đếm số bài, lấy ảnh bìa và id bài hát cho Đĩa đơn */
+const SELECT = "*, owner:profiles(full_name), solo_songs:songs(id, cover_path, is_published)";
 
 export interface ListOptions {
-  /** true: gồm cả Single (album solo). Mặc định false: chỉ album thật. */
+  /** true: gồm cả Đĩa đơn (album solo). Mặc định false: chỉ album thật. */
   includeSolo?: boolean;
 }
 
@@ -72,24 +72,32 @@ export async function updateAlbum(album: Album, input: AlbumInput, userId: strin
   return data as Album;
 }
 
-/** Xoá album — các bài hát trong album vẫn giữ lại (tự thành Single) */
+/** Xoá album — các bài hát trong album vẫn giữ lại (tự thành Đĩa đơn) */
 export async function deleteAlbum(album: Album) {
   const { error } = await supabase.from("albums").delete().eq("id", album.id);
   if (error) throw error;
   await removeFiles("covers", [album.cover_path]);
 }
 
-/**
- * Đường dẫn ảnh bìa (kho "covers") của album.
- * Album solo (Single) không có ảnh riêng: dùng ảnh bìa của chính bài hát.
- */
+/** Id bài hát của một Đĩa đơn (null nếu không phải Đĩa đơn) */
+export function soloSongId(a: Pick<Album, "is_solo" | "solo_songs">): string | null {
+  return a.is_solo ? (a.solo_songs?.[0]?.id ?? null) : null;
+}
+
+/** Đường dẫn khi bấm vào album: Đĩa đơn mở thẳng trang bài hát */
+export function albumHref(a: Pick<Album, "id" | "is_solo" | "solo_songs">): string {
+  const sid = soloSongId(a);
+  return sid ? `/bai-hat/${sid}` : `/album/${a.id}`;
+}
+
+/** Đường dẫn ảnh bìa (kho "covers"). Đĩa đơn không có ảnh riêng: dùng ảnh bìa bài hát. */
 export function albumCoverPath(a: Pick<Album, "cover_path" | "is_solo" | "solo_songs">): string | null {
   if (a.cover_path) return a.cover_path;
   if (a.is_solo) return a.solo_songs?.find((s) => s.cover_path)?.cover_path ?? null;
   return null;
 }
 
-/** Số bài hát đã đăng của album (người xem thường chỉ thấy bài đã đăng; chủ album/admin có thể thấy cả bài chờ duyệt nên lọc lại) */
+/** Số bài hát đã đăng của album */
 export function albumSongCount(a: Pick<Album, "solo_songs">): number {
   return (a.solo_songs ?? []).filter((s) => s.is_published !== false).length;
 }

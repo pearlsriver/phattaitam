@@ -5,11 +5,11 @@ import { removeFiles, uploadFile } from "@/services/storage";
 const SELECT = "*, album_info:albums(id, title, cover_path, is_solo)";
 
 /**
- * Bài hát Single (album solo): album trùng tên bài hát nên hiển thị nhãn "Single"
+ * Bài hát Đĩa đơn (album solo): album trùng tên bài hát nên hiển thị nhãn "Đĩa đơn"
  * thay vì lặp lại tên bài ("Tên bài · Tên bài").
  */
 export function singleLabel<T extends Song>(s: T): T {
-  return s.album_info?.is_solo ? { ...s, album_info: { ...s.album_info, title: "Single" } } : s;
+  return s.album_info?.is_solo ? { ...s, album_info: { ...s.album_info, title: "Đĩa đơn" } } : s;
 }
 
 function base() {
@@ -54,7 +54,11 @@ export async function getSongById(id: string): Promise<Song | null> {
   return data ? singleLabel(data as Song) : null;
 }
 
-/** Không chọn album (albumId = null): máy chủ tự tạo album solo (Single) cho bài hát. */
+function cleanDuration(d: number | null | undefined): number | null {
+  return d && Number.isFinite(d) && d > 0 && d < 36000 ? Math.round(d * 10) / 10 : null;
+}
+
+/** Không chọn album (albumId = null): máy chủ tự tạo album solo (Đĩa đơn) cho bài hát. */
 export async function uploadSong(input: SongInput, userId: string, publish: boolean): Promise<Song> {
   if (!input.newAudio) throw new Error("Hãy chọn tệp nhạc.");
   const audio_path = await uploadFile("music", input.newAudio, userId);
@@ -73,6 +77,7 @@ export async function uploadSong(input: SongInput, userId: string, publish: bool
     album_id: input.albumId,
     track_no: input.trackNo,
     lyrics: input.lyrics.trim() || null,
+    duration_seconds: cleanDuration(input.durationSec),
     audio_path,
     cover_path,
     is_published: publish,
@@ -86,8 +91,12 @@ export async function uploadSong(input: SongInput, userId: string, publish: bool
   return data as Song;
 }
 
-/** Sửa bài hát. Admin giữ trạng thái đăng; người dùng thường quay về "Chờ duyệt". */
-export async function updateSong(song: Song, input: SongInput, userId: string, isAdmin: boolean): Promise<Song> {
+/**
+ * Sửa bài hát.
+ * keepPublished = true (VIP sửa bài của mình, Admin): giữ nguyên trạng thái đăng.
+ * keepPublished = false (Thành viên mới): bài quay về "Chờ duyệt".
+ */
+export async function updateSong(song: Song, input: SongInput, userId: string, keepPublished: boolean): Promise<Song> {
   let audio_path = song.audio_path;
   let cover_path = song.cover_path;
   let newAudioPath: string | null = null;
@@ -114,7 +123,7 @@ export async function updateSong(song: Song, input: SongInput, userId: string, i
     throw e;
   }
 
-  // Đang là Single mà không chọn album → giữ nguyên album solo hiện tại (giữ nguyên đường dẫn, lượt thích, bình luận)
+  // Đang là Đĩa đơn mà không chọn album → giữ nguyên album solo hiện tại
   const album_id = input.albumId ?? (song.album_info?.is_solo ? song.album_id : null);
 
   const { data, error } = await supabase.from("songs").update({
@@ -125,7 +134,8 @@ export async function updateSong(song: Song, input: SongInput, userId: string, i
     lyrics: input.lyrics.trim() || null,
     audio_path,
     cover_path,
-    is_published: isAdmin ? song.is_published : false,
+    ...(input.newAudio ? { duration_seconds: cleanDuration(input.durationSec) } : {}),
+    is_published: keepPublished ? song.is_published : false,
   }).eq("id", song.id).select().single();
 
   if (error) {
@@ -136,6 +146,14 @@ export async function updateSong(song: Song, input: SongInput, userId: string, i
   await removeFiles("music", oldAudio);
   await removeFiles("covers", oldCover);
   return data as Song;
+}
+
+/** Ghi thời lượng cho bài hát (người tải lên hoặc quản trị viên) */
+export async function setSongDuration(songId: string, seconds: number) {
+  const secs = cleanDuration(seconds);
+  if (!secs) return;
+  const { error } = await supabase.rpc("set_song_duration", { s_id: songId, secs });
+  if (error) throw error;
 }
 
 export async function setSongPublished(id: string, value: boolean) {

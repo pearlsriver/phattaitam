@@ -15,7 +15,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, songs, albums] = await Promise.all([
     sb.from("posts").select("slug, updated_at").eq("is_published", true).limit(5000),
     sb.from("songs").select("id, updated_at").eq("is_published", true).limit(5000),
-    sb.from("albums").select("id, updated_at").limit(1000),
+    // Đĩa đơn không có trang riêng → không đưa vào sitemap
+    sb.from("albums").select("id, updated_at").eq("is_solo", false).limit(1000),
   ]);
 
   return [

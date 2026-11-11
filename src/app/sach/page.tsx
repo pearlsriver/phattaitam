@@ -8,12 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function BooksPage() {
-  return (
-    <PostBrowser
-      mode="books"
-      eyebrow="Sách"
-      title="Sách & tài liệu"
-      subtitle="Những tác phẩm có tệp đính kèm (PDF, EPUB, DOCX…) — đọc online hoặc tải về."
-    />
-  );
+  return <PostBrowser mode="books" />;
 }

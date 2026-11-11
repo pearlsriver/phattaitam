@@ -23,3 +23,23 @@ export function formatCount(n: number | null | undefined): string {
   if (v >= 1_000) return `${(v / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
   return String(v);
 }
+
+/** Thời lượng bài hát: 225 -> "3:45", 3725 -> "1:02:05". Trả về "" nếu chưa có. */
+export function formatDuration(sec: number | null | undefined): string {
+  if (!sec || !Number.isFinite(sec) || sec <= 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${r}` : `${m}:${r}`;
+}
+
+/** Tổng thời lượng album: "42 phút", "1 giờ 5 phút" */
+export function formatTotalDuration(sec: number): string {
+  if (!sec || sec <= 0) return "";
+  const totalMin = Math.round(sec / 60);
+  if (totalMin < 1) return "dưới 1 phút";
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h ? `${h} giờ${m ? ` ${m} phút` : ""}` : `${m} phút`;
+}

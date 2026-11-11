@@ -1,12 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans, Noto_Serif } from "next/font/google";
 import "./globals.css";
+import "./edit-mode.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import TermsGate from "@/components/legal/TermsGate";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import AudioPlayer from "@/components/music/AudioPlayer";
 import { PlayerProvider } from "@/components/music/PlayerProvider";
+import EditModeBar from "@/components/site/EditModeBar";
+import { SiteSettingsProvider } from "@/components/site/SiteSettingsProvider";
 import { DEFAULT_OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const sans = Noto_Sans({ variable: "--font-sans-vi", subsets: ["latin", "vietnamese"] });
@@ -30,7 +33,6 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION, images: [DEFAULT_OG_IMAGE] },
 };
 
-/* Điện thoại: dùng toàn màn hình (kể cả vùng tai thỏ), màu thanh trạng thái theo giao diện */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -52,13 +54,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning className="flex min-h-full flex-col font-sans">
         <AuthProvider>
-          <PlayerProvider>
-            <Header />
-            <main className="safe-x mx-auto w-full max-w-6xl flex-1 pb-36 pt-5 sm:pt-8 md:pb-44">{children}</main>
-            <Footer />
-            <AudioPlayer />
-            <TermsGate />
-          </PlayerProvider>
+          <SiteSettingsProvider>
+            <PlayerProvider>
+              <Header />
+              <EditModeBar />
+              <main className="safe-x mx-auto w-full max-w-6xl flex-1 pb-36 pt-5 sm:pt-8 md:pb-44">{children}</main>
+              <Footer />
+              <AudioPlayer />
+              <TermsGate />
+            </PlayerProvider>
+          </SiteSettingsProvider>
         </AuthProvider>
       </body>
     </html>

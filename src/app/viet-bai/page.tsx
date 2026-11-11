@@ -10,7 +10,7 @@ import { parseTags } from "@/utils/tags";
 
 function Write() {
   const router = useRouter();
-  const { user, isAdmin } = useAuth();
+  const { user, canPublish } = useAuth();
   const [tags, setTags] = useState<string[] | null>(null);
 
   useEffect(() => {
@@ -24,16 +24,16 @@ function Write() {
     <div className="mx-auto max-w-3xl space-y-4">
       <p className="text-xs uppercase tracking-[0.2em] text-muted">Sáng tác</p>
       <h1 className="font-serif text-4xl font-semibold text-ink">Viết bài / Tải sách lên</h1>
-      {!isAdmin && (
+      {!canPublish && (
         <p className="rounded-xl bg-accent-soft p-3 text-sm text-ink-soft">Bài của bạn sẽ được quản trị viên duyệt trước khi hiển thị công khai.</p>
       )}
       <PostForm
         defaultTags={tags}
-        submitLabel={isAdmin ? "Đăng bài" : "Gửi bài"}
+        submitLabel={canPublish ? "Đăng bài" : "Gửi bài"}
         onCancel={() => router.back()}
         onSubmit={async (input) => {
-          const post = await createPost(input, user!.id, isAdmin);
-          router.push(isAdmin ? `/bai-viet/${post.slug}` : "/dashboard?sent=1");
+          const post = await createPost(input, user!.id, canPublish);
+          router.push(canPublish ? `/bai-viet/${post.slug}` : "/dashboard?sent=1");
         }}
       />
     </div>

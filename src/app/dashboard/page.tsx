@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import RequireAuth from "@/components/auth/RequireAuth";
 import Avatar from "@/components/social/Avatar";
+import RoleBadge from "@/components/ui/RoleBadge";
 import { useAuth } from "@/hooks/useAuth";
+import { ROLE_DESCRIPTIONS } from "@/lib/roles";
 import { deleteAlbum, listAlbumsByOwner } from "@/services/albumService";
 import { deletePost, listMyPosts } from "@/services/postService";
 import { deleteSong, listMySongs } from "@/services/songService";
 import type { Album } from "@/types/album";
 import type { Post } from "@/types/post";
 import type { Song } from "@/types/song";
-import { formatCount, formatDateTime, wasEdited } from "@/utils/formatDate";
+import { formatCount, formatDateTime, formatDuration, wasEdited } from "@/utils/formatDate";
 
 function Status({ ok }: { ok: boolean }) {
   return ok ? (
@@ -31,7 +33,7 @@ function Times({ created, updated, verb = "Đăng" }: { created: string; updated
 }
 
 function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, role } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -56,13 +58,14 @@ function Dashboard() {
 
   return (
     <div className="space-y-12">
-      <section className="hero-glow rounded-[2rem] border border-line px-8 py-10">
+      <section className="hero-glow rounded-3xl border border-line px-5 py-8 sm:rounded-[2rem] sm:px-8 sm:py-10">
         <div className="flex flex-wrap items-center gap-5">
           <Avatar url={profile?.avatar_url} name={profile?.full_name} size={72} />
-          <div className="flex-1">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted">Tài khoản</p>
-            <h1 className="mt-1 font-serif text-4xl font-semibold text-ink">Xin chào, {profile?.full_name ?? user?.email} 🙏</h1>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted">Tài khoản <RoleBadge role={role} className="normal-case tracking-normal" /></p>
+            <h1 className="mt-1 font-serif text-3xl font-semibold text-ink sm:text-4xl">Xin chào, {profile?.full_name ?? user?.email} 🙏</h1>
             <p className="mt-1 text-sm text-muted">👁 {formatCount(views)} lượt đọc · ▶ {formatCount(plays)} lượt nghe</p>
+            {role && <p className="mt-1 text-xs text-muted">{ROLE_DESCRIPTIONS[role]}</p>}
           </div>
         </div>
         {sent && <p className="mt-4 rounded-xl bg-green-100 p-3 text-green-800">Đã lưu! Nội dung đang chờ duyệt.</p>}
@@ -107,7 +110,7 @@ function Dashboard() {
               </div>
               <Link href={`/album/sua/${a.id}`} className="btn btn-secondary !py-1.5">✏️ Sửa</Link>
               <button type="button" className="btn btn-danger !py-1.5"
-                onClick={async () => { if (confirm("Xoá album? Bài hát vẫn được giữ lại.")) { await deleteAlbum(a); load(); } }}>Xoá</button>
+                onClick={async () => { if (confirm("Xoá album? Bài hát vẫn được giữ lại (tự thành Đĩa đơn).")) { await deleteAlbum(a); load(); } }}>Xoá</button>
             </div>
           ))}
           {!albums.length && <p className="p-4 text-sm text-muted">Chưa có album.</p>}
@@ -122,7 +125,8 @@ function Dashboard() {
               <div className="min-w-0 flex-1">
                 <Link href={`/bai-hat/${s.id}`} className="font-medium text-ink hover:underline">{s.title}</Link>
                 <span className="ml-2 text-xs text-muted">
-                  {s.artist}{s.album_info && ` · ${s.album_info.title}`} · ▶ {formatCount(s.play_count)}{s.lyrics ? " · có lời" : ""}
+                  {s.artist}{s.album_info && ` · ${s.album_info.title}`}
+                  {formatDuration(s.duration_seconds) && ` · ${formatDuration(s.duration_seconds)}`} · ▶ {formatCount(s.play_count)}{s.lyrics ? " · có lời" : ""}
                 </span>
                 <p className="mt-0.5 text-xs text-muted"><Times created={s.created_at} updated={s.updated_at} verb="Tải lên" /></p>
               </div>
