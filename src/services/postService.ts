@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Post, PostInput } from "@/types/post";
 import { firstImage } from "@/utils/html";
+import { ownedPaths } from "@/utils/ownership";
 import { slugify } from "@/utils/slug";
 import { difference, imagePathFromUrl, imagePathsInHtml } from "@/utils/storagePaths";
 import { uniqueTags } from "@/utils/tags";
@@ -16,8 +17,10 @@ function imagesOf(content: string | null | undefined, cover: string | null | und
   return list;
 }
 
+/** Thư viện, trang chủ: chỉ bài CÔNG KHAI đã duyệt */
 export async function listPublishedPosts(limit = 200): Promise<Post[]> {
-  const { data, error } = await supabase.from("posts").select(SELECT).eq("is_published", true)
+  const { data, error } = await supabase.from("posts").select(SELECT)
+    .eq("is_published", true).eq("visibility", "public")
     .order("created_at", { ascending: false }).limit(limit);
   if (error) throw error;
   return (data ?? []) as Post[];
@@ -25,7 +28,7 @@ export async function listPublishedPosts(limit = 200): Promise<Post[]> {
 
 export async function listPostsByAuthor(authorId: string, onlyPublished = true): Promise<Post[]> {
   let q = supabase.from("posts").select(SELECT).eq("author_id", authorId).order("created_at", { ascending: false });
-  if (onlyPublished) q = q.eq("is_published", true);
+  if (onlyPublished) q = q.eq("is_published", true).eq("visibility", "public");
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as Post[];
@@ -73,6 +76,7 @@ export async function createPost(input: PostInput, userId: string, publish: bool
     excerpt: input.excerpt.trim() || null,
     content: input.content,
     cover_image: input.coverImage || firstImage(input.content),
+    visibility: input.visibility,
     file_path,
     file_name,
     is_published: publish,
@@ -85,8 +89,9 @@ export async function createPost(input: PostInput, userId: string, publish: bool
   return data as Post;
 }
 
-/** Sửa bài. Admin giữ trạng thái đăng; người dùng thường quay về "Chờ duyệt".
- *  Tệp đính kèm cũ, ảnh bìa cũ và ảnh bị gỡ khỏi nội dung sẽ được xoá khỏi kho. */
+/** Sửa bài. Admin/VIP giữ trạng thái đăng; Thành viên mới quay về "Chờ duyệt".
+ *  Tệp đính kèm cũ, ảnh bìa cũ và ảnh bị gỡ khỏi nội dung được xoá khỏi kho
+ *  (chỉ các tệp thuộc thư mục của tác giả bài). */
 export async function updatePost(post: Post, input: PostInput, userId: string, isAdmin: boolean): Promise<Post> {
   let file_path = post.file_path;
   let file_name = post.file_name;
@@ -113,6 +118,7 @@ export async function updatePost(post: Post, input: PostInput, userId: string, i
     excerpt: input.excerpt.trim() || null,
     content: input.content,
     cover_image,
+    visibility: input.visibility,
     file_path,
     file_name,
     is_published: isAdmin ? post.is_published : false,
@@ -122,8 +128,11 @@ export async function updatePost(post: Post, input: PostInput, userId: string, i
     await removeFiles("books", [uploaded]);
     throw error;
   }
-  await removeFiles("books", [oldToDelete]);
-  await removeFiles("images", difference(imagesOf(post.content, post.cover_image), imagesOf(input.content, cover_image)));
+  await removeFiles("books", ownedPaths([oldToDelete], post.author_id));
+  await removeFiles(
+    "images",
+    ownedPaths(difference(imagesOf(post.content, post.cover_image), imagesOf(input.content, cover_image)), post.author_id),
+  );
   return data as Post;
 }
 
@@ -132,10 +141,10 @@ export async function setPostPublished(id: string, value: boolean) {
   if (error) throw error;
 }
 
-/** Xoá bài + tệp đính kèm + ảnh bìa + mọi ảnh đã chèn trong bài */
+/** Xoá bài + tệp đính kèm + ảnh bìa + ảnh đã chèn trong bài (chỉ tệp thuộc thư mục của tác giả) */
 export async function deletePost(post: Post) {
   const { error } = await supabase.from("posts").delete().eq("id", post.id);
   if (error) throw error;
-  await removeFiles("books", [post.file_path]);
-  await removeFiles("images", imagesOf(post.content, post.cover_image));
+  await removeFiles("books", ownedPaths([post.file_path], post.author_id));
+  await removeFiles("images", ownedPaths(imagesOf(post.content, post.cover_image), post.author_id));
 }

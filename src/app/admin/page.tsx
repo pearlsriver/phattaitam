@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import RequireAuth from "@/components/auth/RequireAuth";
+import VisibilityBadge from "@/components/ui/VisibilityBadge";
 import { deletePost, listAllPosts, setPostPublished } from "@/services/postService";
 import { deleteSong, listAllSongs, setSongDuration, setSongPublished, songAudioUrl } from "@/services/songService";
 import type { Post } from "@/types/post";
@@ -19,6 +20,9 @@ function Times({ created, updated, verb }: { created: string; updated: string; v
     </>
   );
 }
+
+/** Cần duyệt: chưa đăng và không phải Riêng tư (nội dung riêng tư chỉ chủ nhân xem, không cần duyệt) */
+const pending = (x: { is_published: boolean; visibility?: string }) => !x.is_published && x.visibility !== "private";
 
 function Admin() {
   const [tab, setTab] = useState<"posts" | "songs">("posts");
@@ -37,15 +41,14 @@ function Admin() {
     load();
   }, [load]);
 
-  const pendingPosts = posts.filter((p) => !p.is_published).length;
-  const pendingSongs = songs.filter((s) => !s.is_published).length;
-  const shownPosts = onlyPending ? posts.filter((p) => !p.is_published) : posts;
-  const shownSongs = onlyPending ? songs.filter((s) => !s.is_published) : songs;
+  const pendingPosts = posts.filter(pending).length;
+  const pendingSongs = songs.filter(pending).length;
+  const shownPosts = onlyPending ? posts.filter(pending) : posts;
+  const shownSongs = onlyPending ? songs.filter(pending) : songs;
   const noDuration = songs.filter((s) => !s.duration_seconds);
   const tabCls = (on: boolean) => `btn ${on ? "btn-primary" : "btn-secondary"}`;
   const small = "!py-1.5";
 
-  /** Đo thời lượng các bài hát cũ chưa có */
   async function measureAll() {
     let ok = 0;
     for (let i = 0; i < noDuration.length; i++) {
@@ -102,6 +105,7 @@ function Admin() {
                 {p.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1.5">{p.tags.map((t) => <span key={t} className="chip">#{t}</span>)}</div>}
                 <p className="text-xs text-muted"><Times created={p.created_at} updated={p.updated_at} verb="Đăng" /></p>
               </div>
+              <VisibilityBadge value={p.visibility} showPublic />
               <button type="button" onClick={async () => { await setPostPublished(p.id, !p.is_published); load(); }}
                 className={`btn ${small} ${p.is_published ? "btn-secondary" : "btn-primary"}`}>{p.is_published ? "Ẩn" : "Duyệt"}</button>
               <Link href={`/sua-bai/${p.id}`} className={`btn btn-secondary ${small}`}>✏️ Sửa</Link>
@@ -120,6 +124,7 @@ function Admin() {
                 </p>
                 <p className="text-xs text-muted"><Times created={s.created_at} updated={s.updated_at} verb="Tải lên" /></p>
               </div>
+              <VisibilityBadge value={s.visibility} showPublic />
               <button type="button" onClick={async () => { await setSongPublished(s.id, !s.is_published); load(); }}
                 className={`btn ${small} ${s.is_published ? "btn-secondary" : "btn-primary"}`}>{s.is_published ? "Ẩn" : "Duyệt"}</button>
               <Link href={`/sua-nhac/${s.id}`} className={`btn btn-secondary ${small}`}>✏️ Sửa</Link>

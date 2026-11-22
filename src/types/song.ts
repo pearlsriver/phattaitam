@@ -1,3 +1,5 @@
+import type { Visibility } from "@/lib/visibility";
+
 export interface Song {
   id: string;
   uploader_id: string;
@@ -12,6 +14,10 @@ export interface Song {
   audio_path: string;
   cover_path: string | null;
   is_published: boolean;
+  /** Công khai / Chỉ người có link / Riêng tư */
+  visibility: Visibility;
+  /** Mã bí mật trong link chia sẻ */
+  share_token: string;
   created_at: string;
   updated_at: string;
   /** Với bài Đĩa đơn (album solo), title được hiển thị là "Đĩa đơn" */
@@ -25,6 +31,7 @@ export interface SongInput {
   albumId: string | null;
   trackNo: number | null;
   lyrics: string;
+  visibility: Visibility;
   /** Tệp nhạc (bắt buộc khi tạo, tuỳ chọn khi sửa) */
   newAudio?: File | null;
   /** Thời lượng của tệp nhạc mới (giây), đo khi chọn tệp */

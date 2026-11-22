@@ -1,3 +1,5 @@
+import type { Visibility } from "@/lib/visibility";
+
 export interface Post {
   id: string;
   author_id: string;
@@ -16,6 +18,10 @@ export interface Post {
   cover_image: string | null;
   view_count: number;
   is_published: boolean;
+  /** Công khai / Chỉ người có link / Riêng tư */
+  visibility: Visibility;
+  /** Mã bí mật trong link chia sẻ (chỉ chủ bài và Admin thấy với bài không công khai) */
+  share_token: string;
   created_at: string;
   updated_at: string;
   /** Người đăng bài */
@@ -30,6 +36,7 @@ export interface PostInput {
   content: string;
   /** Ảnh bìa đã tải lên (URL). null = không có ảnh bìa riêng (dùng ảnh đầu tiên trong bài). */
   coverImage: string | null;
+  visibility: Visibility;
   /** Tệp mới (khi tạo hoặc thay thế) */
   newFile?: File | null;
   /** Xoá tệp đính kèm hiện tại (khi sửa) */

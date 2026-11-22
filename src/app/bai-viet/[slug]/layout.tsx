@@ -5,13 +5,12 @@ import { firstImage, plainExcerpt } from "@/utils/html";
 
 type Props = { params: Promise<{ slug: string }> };
 
-/** Supabase có thể trả quan hệ dạng object hoặc mảng — lấy phần tử đầu */
 function one<T>(v: unknown): T | null {
   if (Array.isArray(v)) return (v[0] as T) ?? null;
   return (v as T) ?? null;
 }
 
-/** Thẻ SEO + ảnh/tiêu đề khi chia sẻ link qua Facebook, Zalo… */
+/** Thẻ SEO + ảnh/tiêu đề khi chia sẻ link. Bài không công khai: không hiện thông tin, không cho Google lập chỉ mục. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const { data: post } = await serverSupabase()
@@ -19,9 +18,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .select("title, excerpt, content, cover_image, tags, author_name, created_at, updated_at, author:profiles(full_name)")
     .eq("slug", decodeURIComponent(slug))
     .eq("is_published", true)
+    .eq("visibility", "public")
     .maybeSingle();
 
-  if (!post) return { title: "Không tìm thấy bài viết" };
+  if (!post) return { title: "Bài viết", robots: { index: false, follow: false } };
 
   const tags: string[] = Array.isArray(post.tags) ? post.tags : [];
   const description = post.excerpt || plainExcerpt(post.content, 180) || "Bài viết trên Phật Tại Tâm.";

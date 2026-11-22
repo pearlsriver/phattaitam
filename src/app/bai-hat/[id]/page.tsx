@@ -7,31 +7,54 @@ import { usePlayer } from "@/components/music/PlayerProvider";
 import Comments from "@/components/social/Comments";
 import LikeButton from "@/components/social/LikeButton";
 import ShareButtons from "@/components/social/ShareButtons";
+import ShareLinkBox from "@/components/social/ShareLinkBox";
 import CoverImage from "@/components/ui/CoverImage";
+import VisibilityBadge from "@/components/ui/VisibilityBadge";
 import { useAsync } from "@/hooks/useAsync";
 import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/supabase";
+import { shareKeyFromUrl, shareUrl } from "@/lib/visibility";
+import { getSharedSong } from "@/services/shareService";
 import { getSongById, songCoverPath, songCoverUrl, songDownloadUrl } from "@/services/songService";
+import type { Song } from "@/types/song";
 import { coverFileName } from "@/utils/download";
 import { formatCount, formatDateTime, formatDuration, wasEdited } from "@/utils/formatDate";
+
+async function loadSong(id: string): Promise<Song | null> {
+  const s = await getSongById(id);
+  if (s) return s;
+  // Bài "Chỉ người có link": mở bằng mã ?k=… trong link
+  const k = shareKeyFromUrl();
+  if (!k) return null;
+  const shared = await getSharedSong(k);
+  return shared && shared.id === id ? shared : null;
+}
 
 export default function SongPage() {
   const { id } = useParams<{ id: string }>();
   const { user, isAdmin } = useAuth();
   const { playSong, current } = usePlayer();
-  const { data: song, loading } = useAsync(() => getSongById(id), [id], null);
+  const { data: song, loading, setData } = useAsync<Song | null>(() => loadSong(id), [id, user?.id], null);
 
   if (loading) return <p className="py-16 text-center text-muted">Đang tải…</p>;
-  if (!song) return <p className="py-16 text-center text-ink-soft">Không tìm thấy bài hát.</p>;
+  if (!song)
+    return (
+      <p className="py-16 text-center text-ink-soft">
+        Không tìm thấy bài hát, hoặc bài hát không công khai.
+        {!user && <> Nếu đây là bài của bạn, hãy <Link href="/login" className="text-accent hover:underline">đăng nhập</Link>.</>}
+      </p>
+    );
 
   const cover = songCoverUrl(song);
   const coverPath = songCoverPath(song);
-  // Tải ảnh bìa: chỉ dành cho quản trị viên
   const coverDownload = isAdmin && coverPath ? publicUrl("covers", coverPath, coverFileName(song.title, coverPath)) : null;
-  const canEdit = !!user && (user.id === song.uploader_id || isAdmin);
+  const isOwner = !!user && user.id === song.uploader_id;
+  const canEdit = isOwner || isAdmin;
   const playing = current?.id === song.id;
   const solo = !!song.album_info?.is_solo;
   const dur = formatDuration(song.duration_seconds);
+  const vis = song.visibility ?? "public";
+  const linkForShare = vis === "unlisted" ? shareUrl("song", song.id, song.share_token) : undefined;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -50,11 +73,12 @@ export default function SongPage() {
           )}
         </div>
         <div className="flex flex-col justify-end">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted">{solo ? "Đĩa đơn" : "Bài hát"}</p>
+          <p className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted">
+            {solo ? "Đĩa đơn" : "Bài hát"} <span className="normal-case tracking-normal"><VisibilityBadge value={vis} /></span>
+          </p>
           <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight text-ink sm:text-4xl md:text-5xl">{song.title}</h1>
           <p className="mt-3 text-ink-soft">
             {song.artist ?? "Không rõ"}
-            {/* Đĩa đơn: không hiện liên kết. Bài thuộc album: liên kết tới album. */}
             {song.album_info && !solo && (
               <>
                 {" · "}Album{" "}
@@ -65,20 +89,32 @@ export default function SongPage() {
           <p className="mt-1 text-sm text-muted">
             {dur && `⏱ ${dur} · `}▶ {formatCount(song.play_count)} lượt nghe · Tải lên {formatDateTime(song.created_at)}
             {wasEdited(song.created_at, song.updated_at) && ` · Sửa ${formatDateTime(song.updated_at)}`}
-            {!song.is_published && <span className="ml-2 rounded bg-yellow-100 px-2 text-yellow-800">Chờ duyệt</span>}
+            {!song.is_published && vis !== "private" && <span className="ml-2 rounded bg-yellow-100 px-2 text-yellow-800">Chờ duyệt</span>}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => playSong(song)} className="btn btn-primary !px-6 !py-3">
               <span>▶</span> {playing ? "Đang phát" : "Phát"}
             </button>
             <LikeButton type="song" id={song.id} />
-            <AddToPlaylist songId={song.id} />
+            {vis === "public" && <AddToPlaylist songId={song.id} />}
             <a href={songDownloadUrl(song)} className="btn btn-secondary">⬇ Tải về</a>
             {canEdit && <Link href={`/sua-nhac/${song.id}`} className="btn btn-secondary">✏️ Sửa</Link>}
           </div>
-          <div className="mt-4"><ShareButtons title={song.title} /></div>
+          {vis !== "private" && <div className="mt-4"><ShareButtons title={song.title} url={linkForShare} /></div>}
         </div>
       </div>
+
+      {canEdit && (
+        <ShareLinkBox
+          kind="song"
+          id={song.id}
+          slugOrId={song.id}
+          token={song.share_token}
+          visibility={vis}
+          published={song.is_published}
+          onTokenChange={(t) => setData({ ...song, share_token: t })}
+        />
+      )}
 
       <section className="mt-10 rounded-3xl border border-line bg-surface p-5 sm:mt-12 sm:p-8">
         <div className="mb-4 flex items-center justify-between">
@@ -92,7 +128,7 @@ export default function SongPage() {
         )}
       </section>
 
-      {song.is_published && <Comments type="song" id={song.id} />}
+      {song.is_published && vis !== "private" && <Comments type="song" id={song.id} />}
     </div>
   );
 }

@@ -4,12 +4,12 @@ import { serverPublicUrl, serverSupabase } from "@/lib/supabaseServer";
 
 type Props = { params: Promise<{ id: string }> };
 
-/** Supabase có thể trả quan hệ dạng object hoặc mảng — lấy phần tử đầu */
 function one<T>(v: unknown): T | null {
   if (Array.isArray(v)) return (v[0] as T) ?? null;
   return (v as T) ?? null;
 }
 
+/** Bài hát không công khai: không hiện thông tin, không cho Google lập chỉ mục */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const { data: s } = await serverSupabase()
@@ -17,15 +17,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .select("title, artist, lyrics, cover_path, album_rel:albums(title, cover_path)")
     .eq("id", id)
     .eq("is_published", true)
+    .eq("visibility", "public")
     .maybeSingle();
-  if (!s) return { title: "Không tìm thấy bài hát" };
+  if (!s) return { title: "Bài hát", robots: { index: false, follow: false } };
 
   const album = one<{ title: string; cover_path: string | null }>(s.album_rel);
   const cover = s.cover_path ? serverPublicUrl("covers", s.cover_path) : album?.cover_path ? serverPublicUrl("covers", album.cover_path) : null;
   const title = `${s.title}${s.artist ? ` — ${s.artist}` : ""}`;
   const description =
     (s.lyrics ? String(s.lyrics).replace(/\[[^\]]*\]/g, "").replace(/\s+/g, " ").trim().slice(0, 160) : "") ||
-    `Nghe “${s.title}”${album ? ` trong album ${album.title}` : ""} trên Phật Tại Tâm.`;
+    `Nghe “${s.title}” trên Phật Tại Tâm.`;
   const url = `/bai-hat/${id}`;
 
   return {

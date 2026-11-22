@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 
-/** Chia sẻ: Facebook, Zalo (qua nút chia sẻ của điện thoại), sao chép link */
-export default function ShareButtons({ title }: { title: string }) {
+/** Chia sẻ: Facebook, Zalo (qua nút chia sẻ của điện thoại), sao chép link. url: mặc định là trang hiện tại. */
+export default function ShareButtons({ title, url }: { title: string; url?: string }) {
   const [copied, setCopied] = useState(false);
   const btn = "rounded-full border border-line px-3 py-1.5 text-sm text-ink-soft hover:bg-soft";
 
-  const url = () => window.location.href;
+  const link = () => url ?? window.location.href;
 
   async function nativeShare() {
     if (navigator.share) {
       try {
-        await navigator.share({ title, url: url() });
+        await navigator.share({ title, url: link() });
       } catch {}
     } else {
       copy();
@@ -21,7 +21,7 @@ export default function ShareButtons({ title }: { title: string }) {
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(url());
+      await navigator.clipboard.writeText(link());
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {}
@@ -30,7 +30,7 @@ export default function ShareButtons({ title }: { title: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" className={btn}
-        onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url())}`, "_blank", "noopener,width=640,height=560")}>
+        onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link())}`, "_blank", "noopener,width=640,height=560")}>
         Facebook
       </button>
       <button type="button" className={btn} onClick={nativeShare} title="Chia sẻ qua Zalo, Messenger… trên điện thoại">

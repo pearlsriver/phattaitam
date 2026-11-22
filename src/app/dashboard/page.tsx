@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import RequireAuth from "@/components/auth/RequireAuth";
 import Avatar from "@/components/social/Avatar";
 import RoleBadge from "@/components/ui/RoleBadge";
+import VisibilityBadge from "@/components/ui/VisibilityBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { ROLE_DESCRIPTIONS } from "@/lib/roles";
 import { deleteAlbum, listAlbumsByOwner } from "@/services/albumService";
@@ -15,7 +16,8 @@ import type { Post } from "@/types/post";
 import type { Song } from "@/types/song";
 import { formatCount, formatDateTime, formatDuration, wasEdited } from "@/utils/formatDate";
 
-function Status({ ok }: { ok: boolean }) {
+function Status({ ok, visibility }: { ok: boolean; visibility: string }) {
+  if (visibility === "private") return null; // Riêng tư: không cần duyệt
   return ok ? (
     <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800">Đã đăng</span>
   ) : (
@@ -68,7 +70,7 @@ function Dashboard() {
             {role && <p className="mt-1 text-xs text-muted">{ROLE_DESCRIPTIONS[role]}</p>}
           </div>
         </div>
-        {sent && <p className="mt-4 rounded-xl bg-green-100 p-3 text-green-800">Đã lưu! Nội dung đang chờ duyệt.</p>}
+        {sent && <p className="mt-4 rounded-xl bg-green-100 p-3 text-green-800">Đã lưu! Nội dung công khai / có link đang chờ duyệt.</p>}
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/viet-bai" className="btn btn-primary">✍️ Viết bài / tải sách</Link>
           <Link href="/tai-nhac" className="btn btn-secondary">⬆ Tải nhạc</Link>
@@ -89,7 +91,8 @@ function Dashboard() {
                 {p.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1.5">{p.tags.map((t) => <span key={t} className="chip">#{t}</span>)}</div>}
                 <p className="mt-0.5 text-xs text-muted"><Times created={p.created_at} updated={p.updated_at} /></p>
               </div>
-              <Status ok={p.is_published} />
+              <VisibilityBadge value={p.visibility} showPublic />
+              <Status ok={p.is_published} visibility={p.visibility} />
               <Link href={`/sua-bai/${p.id}`} className="btn btn-secondary !py-1.5">✏️ Sửa</Link>
               <button type="button" className="btn btn-danger !py-1.5"
                 onClick={async () => { if (confirm("Xoá bài này (kèm tệp đính kèm và ảnh trong bài)?")) { await deletePost(p); load(); } }}>Xoá</button>
@@ -130,7 +133,8 @@ function Dashboard() {
                 </span>
                 <p className="mt-0.5 text-xs text-muted"><Times created={s.created_at} updated={s.updated_at} verb="Tải lên" /></p>
               </div>
-              <Status ok={s.is_published} />
+              <VisibilityBadge value={s.visibility} showPublic />
+              <Status ok={s.is_published} visibility={s.visibility} />
               <Link href={`/sua-nhac/${s.id}`} className="btn btn-secondary !py-1.5">✏️ Sửa</Link>
               <button type="button" className="btn btn-danger !py-1.5"
                 onClick={async () => { if (confirm("Xoá bài hát này (kèm tệp nhạc và ảnh bìa)?")) { await deleteSong(s); load(); } }}>Xoá</button>

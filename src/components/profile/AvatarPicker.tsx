@@ -2,13 +2,14 @@
 
 import { useRef, useState } from "react";
 import Avatar from "@/components/social/Avatar";
+import DropZone from "@/components/ui/DropZone";
 import { IMAGE_MAX_INPUT_BYTES, compressImage, formatFileSize } from "@/utils/imageCompress";
 
+const ACCEPT = "image/jpeg,image/png,image/webp";
+
 /**
- * Chọn ảnh đại diện — giống ô ảnh bìa album:
- * - Ảnh tỉ lệ nào cũng được, hiển thị vừa khung tròn, không bị cắt.
- * - Ảnh lớn được tự nén xuống khoảng 1 MB.
- * - Ảnh CHỈ được tải lên khi bấm "Lưu hồ sơ" (không tạo tệp rác nếu bấm Huỷ).
+ * Chọn ảnh đại diện (bấm hoặc kéo-thả) — giống ô ảnh bìa album.
+ * Ảnh CHỈ được tải lên khi bấm "Lưu hồ sơ".
  */
 export default function AvatarPicker({
   currentUrl,
@@ -16,12 +17,9 @@ export default function AvatarPicker({
   name,
   onChange,
 }: {
-  /** Ảnh đang dùng (đã lưu) */
   currentUrl: string | null;
-  /** Ảnh từ tài khoản Google (nếu có) */
   googleUrl: string | null;
   name: string;
-  /** file: ảnh mới chọn · url: dùng địa chỉ có sẵn (Google) · null cả hai: bỏ ảnh */
   onChange: (v: { file: File | null; url: string | null; preview: string | null }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,10 +34,7 @@ export default function AvatarPicker({
     onChange({ file, url, preview: p });
   }
 
-  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
+  async function handle(f: File) {
     if (!f.type.startsWith("image/")) return setError("Chỉ chấp nhận tệp ảnh (JPG, PNG, WebP).");
     if (f.size > IMAGE_MAX_INPUT_BYTES) return setError("Ảnh gốc quá lớn (tối đa 40 MB).");
     setError(null);
@@ -57,18 +52,15 @@ export default function AvatarPicker({
 
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        className="group relative rounded-full ring-2 ring-line transition hover:ring-accent"
-        aria-label="Chọn ảnh đại diện"
-      >
-        <Avatar url={preview} name={name} size={128} />
-        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-sm font-medium text-white opacity-0 transition group-hover:opacity-100">
-          {busy ? "Đang nén…" : "📷 Đổi ảnh"}
-        </span>
-      </button>
+      <DropZone accept={ACCEPT} onFile={handle} onReject={setError} disabled={busy} rounded="rounded-full" label="Thả ảnh">
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
+          className="group relative rounded-full ring-2 ring-line transition hover:ring-accent" aria-label="Chọn ảnh đại diện">
+          <Avatar url={preview} name={name} size={128} />
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-sm font-medium text-white opacity-0 transition group-hover:opacity-100">
+            {busy ? "Đang nén…" : "📷 Đổi ảnh"}
+          </span>
+        </button>
+      </DropZone>
 
       <div className="flex flex-col items-center gap-2 sm:items-start">
         <div className="flex flex-wrap justify-center gap-2">
@@ -87,13 +79,14 @@ export default function AvatarPicker({
           )}
         </div>
         <p className="text-center text-xs text-muted sm:text-left">
-          Ảnh tỉ lệ nào cũng được — hiển thị vừa khung tròn, không bị cắt. Ảnh lớn được tự nén xuống khoảng 1 MB.
+          Bấm hoặc kéo-thả ảnh vào khung tròn. Ảnh tỉ lệ nào cũng được, không bị cắt; ảnh lớn được tự nén xuống khoảng 1 MB.
         </p>
         {info && <p className="text-xs text-green-500">{info}</p>}
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
 
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pick} />
+      <input ref={inputRef} type="file" accept={ACCEPT} hidden
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) handle(f); }} />
     </div>
   );
 }

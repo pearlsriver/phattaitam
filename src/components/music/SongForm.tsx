@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import FileDrop from "@/components/ui/FileDrop";
+import VisibilityPicker from "@/components/ui/VisibilityPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { MAX_UPLOAD_MB } from "@/lib/supabase";
+import type { Visibility } from "@/lib/visibility";
 import { listAlbums, listAlbumsByOwner } from "@/services/albumService";
 import { songAudioUrl, songCoverUrl } from "@/services/songService";
 import type { Album } from "@/types/album";
@@ -11,7 +14,10 @@ import type { Song, SongInput } from "@/types/song";
 import { readAudioDuration } from "@/utils/audioDuration";
 import { formatDuration } from "@/utils/formatDate";
 
-/** Form dùng chung cho Tải nhạc lên và Sửa bài hát */
+const AUDIO_ACCEPT = "audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac";
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
+
+/** Form dùng chung cho Tải nhạc lên và Sửa bài hát (bấm hoặc kéo-thả tệp) */
 export default function SongForm({
   song,
   submitLabel,
@@ -23,7 +29,7 @@ export default function SongForm({
   onSubmit: (input: SongInput) => Promise<void>;
   onCancel?: () => void;
 }) {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, canPublish } = useAuth();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [title, setTitle] = useState(song?.title ?? "");
   const [artist, setArtist] = useState(song?.artist ?? profile?.full_name ?? "");
@@ -31,6 +37,7 @@ export default function SongForm({
   const [albumId, setAlbumId] = useState<string>(song?.album_info?.is_solo ? "" : (song?.album_id ?? ""));
   const [trackNo, setTrackNo] = useState<string>(song?.track_no ? String(song.track_no) : "");
   const [lyrics, setLyrics] = useState(song?.lyrics ?? "");
+  const [visibility, setVisibility] = useState<Visibility>(song?.visibility ?? "public");
   const [newAudio, setNewAudio] = useState<File | null>(null);
   const [durationSec, setDurationSec] = useState<number | null>(null);
   const [measuring, setMeasuring] = useState(false);
@@ -41,15 +48,16 @@ export default function SongForm({
 
   useEffect(() => {
     if (!user) return;
-    // Danh sách chỉ gồm album thật (không gồm các Đĩa đơn)
     (isAdmin ? listAlbums() : listAlbumsByOwner(user.id)).then(setAlbums).catch(() => {});
   }, [user, isAdmin]);
 
   const limit = MAX_UPLOAD_MB * 1024 * 1024;
 
   async function pickAudio(f: File | null) {
-    setNewAudio(f);
     setDurationSec(null);
+    if (f && f.size > limit) return setError(`Tệp nhạc vượt quá ${MAX_UPLOAD_MB} MB.`);
+    setError(null);
+    setNewAudio(f);
     if (!f) return;
     if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
     setMeasuring(true);
@@ -57,17 +65,22 @@ export default function SongForm({
     setMeasuring(false);
   }
 
+  function pickCover(f: File | null) {
+    if (f && f.size > 40 * 1024 * 1024) return setError("Ảnh bìa gốc quá lớn (tối đa 40 MB).");
+    setError(null);
+    setNewCover(f);
+    if (f) setRemoveCover(false);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!song && !newAudio) return setError("Hãy chọn tệp nhạc.");
-    if (newAudio && newAudio.size > limit) return setError(`Tệp nhạc vượt quá ${MAX_UPLOAD_MB} MB.`);
-    if (newCover && newCover.size > 40 * 1024 * 1024) return setError("Ảnh bìa gốc quá lớn (tối đa 40 MB).");
     const n = parseInt(trackNo, 10);
     setBusy(true);
     setError(null);
     try {
       await onSubmit({
-        title, artist, lyrics,
+        title, artist, lyrics, visibility,
         albumId: albumId || null,
         trackNo: Number.isFinite(n) && n > 0 ? n : null,
         newAudio, durationSec, newCover, removeCover,
@@ -78,7 +91,6 @@ export default function SongForm({
     }
   }
 
-  const drop = "block rounded-xl border border-dashed border-line bg-surface p-4 text-sm text-ink-soft";
   const cover = song ? songCoverUrl(song) : null;
   const oldDur = formatDuration(song?.duration_seconds);
 
@@ -99,17 +111,21 @@ export default function SongForm({
         </div>
       )}
 
-      <label className={drop}>
-        <span className="mb-2 block font-medium text-ink">
-          🎵 {song ? "Thay tệp nhạc (không bắt buộc)" : "Tệp nhạc"} — MP3, M4A, WAV, OGG, tối đa {MAX_UPLOAD_MB} MB
-        </span>
-        <input required={!song} type="file" accept="audio/*" onChange={(e) => pickAudio(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+      <FileDrop
+        accept={AUDIO_ACCEPT}
+        title={`🎵 ${song ? "Thay tệp nhạc (không bắt buộc)" : "Tệp nhạc"}`}
+        hint={`MP3, M4A, WAV, OGG — tối đa ${MAX_UPLOAD_MB} MB`}
+        file={newAudio}
+        onFile={pickAudio}
+        onReject={setError}
+        required={!song}
+      >
         {newAudio && (
-          <span className="mt-1 block text-xs text-muted">
+          <p className="mt-2 text-xs text-muted">
             {measuring ? "Đang đo thời lượng…" : durationSec ? `Thời lượng: ${formatDuration(durationSec)}` : "Không đọc được thời lượng (vẫn tải lên được)."}
-          </span>
+          </p>
         )}
-      </label>
+      </FileDrop>
 
       <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tên bài hát" className="field" />
       <input value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Ca sĩ / tác giả" className="field" />
@@ -124,9 +140,11 @@ export default function SongForm({
         <input type="number" min={1} value={trackNo} onChange={(e) => setTrackNo(e.target.value)} placeholder="Số thứ tự" className="field" />
       </div>
       <p className="-mt-2 text-xs text-muted">
-        Không chọn album: bài hát tự thành một <b>Đĩa đơn</b> và vẫn có trang riêng.{" "}
+        Không chọn album: bài hát là một <b>Đĩa đơn</b>.{" "}
         Chưa có album? <Link href="/album/moi" target="_blank" className="text-accent hover:underline">Tạo album mới</Link> rồi tải lại trang này.
       </p>
+
+      <VisibilityPicker value={visibility} onChange={setVisibility} needsApproval={!canPublish} />
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-ink">📝 Lời bài hát</span>
@@ -134,17 +152,21 @@ export default function SongForm({
           placeholder={"[Verse 1]\n…\n\n[Chorus]\n…"} className="field font-serif leading-relaxed" />
       </label>
 
-      <div className={drop}>
-        <span className="mb-2 block font-medium text-ink">🖼 Ảnh bìa riêng (không bắt buộc — nếu trống sẽ dùng bìa album)</span>
+      <FileDrop
+        accept={IMAGE_ACCEPT}
+        title="🖼 Ảnh bìa riêng (không bắt buộc)"
+        hint="Nếu trống sẽ dùng bìa album. Ảnh lớn được tự nén xuống khoảng 1 MB."
+        file={newCover}
+        onFile={pickCover}
+        onReject={setError}
+      >
         {song?.cover_path && !newCover && (
-          <label className="mb-2 flex items-center gap-2">
+          <label className="mt-3 flex items-center gap-2">
             <input type="checkbox" checked={removeCover} onChange={(e) => setRemoveCover(e.target.checked)} className="accent-[var(--accent)]" />
             <span className="text-red-500">Xoá ảnh bìa hiện tại</span>
           </label>
         )}
-        <input type="file" accept="image/*" onChange={(e) => { setNewCover(e.target.files?.[0] ?? null); setRemoveCover(false); }} className="block w-full text-sm" />
-        <span className="mt-1 block text-[11px] text-muted">Ảnh lớn được tự nén xuống khoảng 1 MB khi tải lên.</span>
-      </div>
+      </FileDrop>
 
       {error && <p className="text-red-500">{error}</p>}
       <div className="flex flex-col-reverse gap-3 sm:flex-row">

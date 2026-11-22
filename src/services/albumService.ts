@@ -1,6 +1,7 @@
 import { publicUrl, supabase } from "@/lib/supabase";
 import type { Album, AlbumInput } from "@/types/album";
 import { removeFiles, uploadFile } from "@/services/storage";
+import { ownedPaths } from "@/utils/ownership";
 
 /** solo_songs: các bài hát của album — đếm số bài, lấy ảnh bìa và id bài hát cho Đĩa đơn */
 const SELECT = "*, owner:profiles(full_name), solo_songs:songs(id, cover_path, is_published)";
@@ -68,7 +69,7 @@ export async function updateAlbum(album: Album, input: AlbumInput, userId: strin
     await removeFiles("covers", [uploaded]);
     throw error;
   }
-  await removeFiles("covers", [old]);
+  await removeFiles("covers", ownedPaths([old], album.owner_id));
   return data as Album;
 }
 
@@ -76,7 +77,7 @@ export async function updateAlbum(album: Album, input: AlbumInput, userId: strin
 export async function deleteAlbum(album: Album) {
   const { error } = await supabase.from("albums").delete().eq("id", album.id);
   if (error) throw error;
-  await removeFiles("covers", [album.cover_path]);
+  await removeFiles("covers", ownedPaths([album.cover_path], album.owner_id));
 }
 
 /** Id bài hát của một Đĩa đơn (null nếu không phải Đĩa đơn) */

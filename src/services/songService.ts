@@ -1,13 +1,11 @@
 import { publicUrl, supabase } from "@/lib/supabase";
 import type { Song, SongInput } from "@/types/song";
 import { removeFiles, uploadFile } from "@/services/storage";
+import { ownedPaths } from "@/utils/ownership";
 
 const SELECT = "*, album_info:albums(id, title, cover_path, is_solo)";
 
-/**
- * Bài hát Đĩa đơn (album solo): album trùng tên bài hát nên hiển thị nhãn "Đĩa đơn"
- * thay vì lặp lại tên bài ("Tên bài · Tên bài").
- */
+/** Bài hát Đĩa đơn: hiển thị nhãn "Đĩa đơn" thay vì lặp lại tên bài */
 export function singleLabel<T extends Song>(s: T): T {
   return s.album_info?.is_solo ? { ...s, album_info: { ...s.album_info, title: "Đĩa đơn" } } : s;
 }
@@ -21,12 +19,13 @@ function done(res: { data: unknown; error: unknown }): Song[] {
   return ((res.data ?? []) as Song[]).map(singleLabel);
 }
 
+/** Thư viện nhạc, Radio: chỉ bài CÔNG KHAI đã duyệt */
 export async function listPublishedSongs(): Promise<Song[]> {
-  return done(await base().eq("is_published", true).order("created_at", { ascending: false }));
+  return done(await base().eq("is_published", true).eq("visibility", "public").order("created_at", { ascending: false }));
 }
 
 export async function listSongsByUploader(userId: string): Promise<Song[]> {
-  return done(await base().eq("uploader_id", userId).eq("is_published", true).order("created_at", { ascending: false }));
+  return done(await base().eq("uploader_id", userId).eq("is_published", true).eq("visibility", "public").order("created_at", { ascending: false }));
 }
 
 export async function listMySongs(userId: string): Promise<Song[]> {
@@ -37,12 +36,13 @@ export async function listAllSongs(): Promise<Song[]> {
   return done(await base().order("updated_at", { ascending: false }));
 }
 
-/** Bài trong album, theo số thứ tự rồi ngày tải lên */
+/** Bài trong album (chỉ bài công khai), theo số thứ tự rồi ngày tải lên */
 export async function listAlbumSongs(albumId: string): Promise<Song[]> {
   return done(
     await base()
       .eq("album_id", albumId)
       .eq("is_published", true)
+      .eq("visibility", "public")
       .order("track_no", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
   );
@@ -78,6 +78,7 @@ export async function uploadSong(input: SongInput, userId: string, publish: bool
     track_no: input.trackNo,
     lyrics: input.lyrics.trim() || null,
     duration_seconds: cleanDuration(input.durationSec),
+    visibility: input.visibility,
     audio_path,
     cover_path,
     is_published: publish,
@@ -132,6 +133,7 @@ export async function updateSong(song: Song, input: SongInput, userId: string, k
     album_id,
     track_no: input.trackNo,
     lyrics: input.lyrics.trim() || null,
+    visibility: input.visibility,
     audio_path,
     cover_path,
     ...(input.newAudio ? { duration_seconds: cleanDuration(input.durationSec) } : {}),
@@ -143,8 +145,8 @@ export async function updateSong(song: Song, input: SongInput, userId: string, k
     await removeFiles("covers", [newCoverPath]);
     throw error;
   }
-  await removeFiles("music", oldAudio);
-  await removeFiles("covers", oldCover);
+  await removeFiles("music", ownedPaths(oldAudio, song.uploader_id));
+  await removeFiles("covers", ownedPaths(oldCover, song.uploader_id));
   return data as Song;
 }
 
@@ -161,12 +163,12 @@ export async function setSongPublished(id: string, value: boolean) {
   if (error) throw error;
 }
 
-/** Xoá bài hát + tệp nhạc + ảnh bìa (album solo của bài cũng tự xoá theo) */
+/** Xoá bài hát + tệp nhạc + ảnh bìa (chỉ tệp thuộc thư mục người tải lên; album solo tự xoá theo) */
 export async function deleteSong(song: Song) {
   const { error } = await supabase.from("songs").delete().eq("id", song.id);
   if (error) throw error;
-  await removeFiles("music", [song.audio_path]);
-  await removeFiles("covers", [song.cover_path]);
+  await removeFiles("music", ownedPaths([song.audio_path], song.uploader_id));
+  await removeFiles("covers", ownedPaths([song.cover_path], song.uploader_id));
 }
 
 export const songAudioUrl = (s: Song) => publicUrl("music", s.audio_path);

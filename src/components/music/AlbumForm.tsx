@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CoverImage from "@/components/ui/CoverImage";
+import DropZone from "@/components/ui/DropZone";
 import { albumCoverUrl } from "@/services/albumService";
 import type { Album, AlbumInput } from "@/types/album";
 import { IMAGE_MAX_INPUT_BYTES, compressImage, formatFileSize } from "@/utils/imageCompress";
+
+const ACCEPT = "image/jpeg,image/png,image/webp";
 
 export default function AlbumForm({
   album,
@@ -17,6 +20,7 @@ export default function AlbumForm({
   onSubmit: (input: AlbumInput) => Promise<void>;
   onCancel?: () => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(album?.title ?? "");
   const [description, setDescription] = useState(album?.description ?? "");
   const [newCover, setNewCover] = useState<File | null>(null);
@@ -27,7 +31,6 @@ export default function AlbumForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Giải phóng địa chỉ xem trước tạm thời
   useEffect(() => () => { if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview); }, [preview]);
 
   async function pick(f: File | null) {
@@ -64,23 +67,23 @@ export default function AlbumForm({
   return (
     <form onSubmit={submit} className="grid gap-6 md:grid-cols-[14rem_1fr]">
       <div>
-        <div className="aspect-square overflow-hidden rounded-2xl border border-line bg-accent-soft">
-          {showCover ? (
-            <CoverImage src={preview} eager className="h-full w-full" />
-          ) : (
-            // Chưa có ảnh bìa: dùng logo trang web
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/logo.png" alt="Logo Phật Tại Tâm" className="h-full w-full object-contain p-5" />
-          )}
-        </div>
-        {!showCover && <p className="mt-1.5 text-xs text-muted">Chưa có ảnh bìa — album sẽ hiện logo Phật Tại Tâm.</p>}
-        <label className="mt-3 block text-sm text-ink-soft">
-          <span className="mb-1 block font-medium text-ink">Ảnh bìa album</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pick(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-4 file:py-2 file:text-accent" />
-        </label>
-        <p className="mt-1.5 text-[11px] leading-snug text-muted">Ảnh tỉ lệ nào cũng được — hiển thị vừa khung, không bị cắt. Ảnh lớn được tự nén xuống khoảng 1 MB.</p>
-        {compressing && <p className="mt-1 text-xs text-muted">Đang nén ảnh…</p>}
+        <DropZone accept={ACCEPT} onFile={pick} onReject={setError} disabled={compressing} rounded="rounded-2xl" label="Thả ảnh bìa vào đây">
+          <button type="button" onClick={() => inputRef.current?.click()} aria-label="Chọn ảnh bìa album"
+            className="group relative block aspect-square w-full overflow-hidden rounded-2xl border-2 border-dashed border-line bg-accent-soft transition hover:border-accent">
+            {showCover ? (
+              <CoverImage src={preview} eager className="h-full w-full" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/logo.png" alt="Logo Phật Tại Tâm" className="h-full w-full object-contain p-5 opacity-70" />
+            )}
+            <span className="absolute inset-x-0 bottom-0 bg-black/55 py-1.5 text-center text-xs font-medium text-white">
+              {compressing ? "Đang nén ảnh…" : "Bấm hoặc kéo-thả ảnh vào"}
+            </span>
+          </button>
+        </DropZone>
+        <input ref={inputRef} type="file" accept={ACCEPT} hidden
+          onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; pick(f); }} />
+        <p className="mt-1.5 text-[11px] leading-snug text-muted">Ảnh tỉ lệ nào cũng được — vừa khung, không bị cắt. Ảnh lớn được tự nén xuống khoảng 1 MB.</p>
         {info && !compressing && <p className="mt-1 text-xs text-green-500">{info}</p>}
         {album?.cover_path && !newCover && (
           <label className="mt-2 flex items-center gap-2 text-sm text-red-500">

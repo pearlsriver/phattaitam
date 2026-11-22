@@ -21,7 +21,7 @@ export async function saveRadioSettings(s: RadioSettings) {
   if (error) throw error;
 }
 
-/** Danh sách bài do quản trị viên chọn, theo thứ tự (chỉ bài đã đăng) */
+/** Danh sách bài do quản trị viên chọn, theo thứ tự (chỉ bài công khai đã đăng) */
 export async function listRadioSongs(): Promise<Song[]> {
   const { data, error } = await supabase.from("radio_songs")
     .select("position, song:songs(*, album_info:albums(id, title, cover_path, is_solo))")
@@ -29,7 +29,7 @@ export async function listRadioSongs(): Promise<Song[]> {
   if (error) throw error;
   return ((data ?? []) as unknown as { song: Song | Song[] | null }[])
     .map((r) => (Array.isArray(r.song) ? r.song[0] : r.song))
-    .filter((s): s is Song => !!s && s.is_published)
+    .filter((s): s is Song => !!s && s.is_published && (s.visibility ?? "public") === "public")
     .map(singleLabel);
 }
 

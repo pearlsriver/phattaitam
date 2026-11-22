@@ -3,13 +3,18 @@
 import { useRef, useState } from "react";
 import CoverPicker from "@/components/posts/CoverPicker";
 import RichEditor from "@/components/posts/RichEditor";
+import FileDrop from "@/components/ui/FileDrop";
 import TagInput from "@/components/ui/TagInput";
+import VisibilityPicker from "@/components/ui/VisibilityPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { MAX_UPLOAD_MB } from "@/lib/supabase";
+import type { Visibility } from "@/lib/visibility";
 import { removeFiles } from "@/services/storage";
 import { customCover, type Post, type PostInput } from "@/types/post";
 import { isHtml, stripHtml, textToHtml } from "@/utils/html";
 import { difference, imagePathFromUrl, imagePathsInHtml } from "@/utils/storagePaths";
+
+const BOOK_ACCEPT = ".pdf,.epub,.doc,.docx,.txt";
 
 /** Form dùng chung cho Viết bài mới và Sửa bài */
 export default function PostForm({
@@ -25,13 +30,14 @@ export default function PostForm({
   onSubmit: (input: PostInput) => Promise<void>;
   onCancel?: () => void;
 }) {
-  const { profile } = useAuth();
+  const { profile, canPublish } = useAuth();
   const initialHtml = post ? (isHtml(post.content) ? post.content : textToHtml(post.content)) : "";
   const [title, setTitle] = useState(post?.title ?? "");
   const [tags, setTags] = useState<string[]>(post?.tags ?? defaultTags);
   const [authorName, setAuthorName] = useState(post ? (post.author_name ?? post.author?.full_name ?? "") : (profile?.full_name ?? ""));
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [cover, setCover] = useState<string | null>(post ? customCover(post) : null);
+  const [visibility, setVisibility] = useState<Visibility>(post?.visibility ?? "public");
   const [content, setContent] = useState(initialHtml);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [removeFile, setRemoveFile] = useState(false);
@@ -43,7 +49,6 @@ export default function PostForm({
   const hasText = stripHtml(content).length > 0 || /<img/i.test(content);
   const hasFileAfter = !!newFile || (!!post?.file_path && !removeFile);
 
-  /** Xoá các ảnh vừa tải lên nhưng cuối cùng không dùng (không nằm trong nội dung, không phải ảnh bìa) */
   async function cleanupSession(keepHtml: string, keepCover: string | null) {
     const uploaded = (sessionUploads.current ?? []).map((u) => imagePathFromUrl(u)).filter((p): p is string => !!p);
     const keep = imagePathsInHtml(keepHtml);
@@ -54,6 +59,13 @@ export default function PostForm({
     if (unused.length) await removeFiles("images", unused);
   }
 
+  function pickFile(f: File | null) {
+    if (f && f.size > MAX_UPLOAD_MB * 1024 * 1024) return setError(`Tệp vượt quá ${MAX_UPLOAD_MB} MB.`);
+    setError(null);
+    setNewFile(f);
+    if (f) setRemoveFile(false);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!hasText && !hasFileAfter) return setError("Hãy viết nội dung hoặc đính kèm một tệp.");
@@ -62,7 +74,7 @@ export default function PostForm({
     setError(null);
     const finalContent = hasText ? content : "";
     try {
-      await onSubmit({ title, tags, authorName, excerpt, content: finalContent, coverImage: cover, newFile, removeFile });
+      await onSubmit({ title, tags, authorName, excerpt, content: finalContent, coverImage: cover, visibility, newFile, removeFile });
       await cleanupSession(finalContent, cover);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không lưu được bài viết");
@@ -77,7 +89,6 @@ export default function PostForm({
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      {/* Ảnh bìa bên trái, thông tin bên phải (điện thoại: xếp chồng) */}
       <div className="grid gap-5 sm:grid-cols-[10rem_1fr]">
         <div className="mx-auto w-40 sm:mx-0 sm:w-auto">
           <CoverPicker value={cover} onChange={setCover} onUploaded={(url) => sessionUploads.current?.push(url)} />
@@ -100,6 +111,8 @@ export default function PostForm({
         </div>
       </div>
 
+      <VisibilityPicker value={visibility} onChange={setVisibility} needsApproval={!canPublish} />
+
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-ink">Tóm tắt</span>
         <input value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Hiện khi chia sẻ link (không bắt buộc)" className="field" />
@@ -109,22 +122,25 @@ export default function PostForm({
         initialHtml={initialHtml}
         onChange={setContent}
         onImageUploaded={(url) => sessionUploads.current?.push(url)}
-        placeholder="Viết nội dung…"
+        placeholder="Viết nội dung… (có thể kéo-thả ảnh vào đây)"
       />
 
-      <div className="space-y-3 rounded-xl border border-dashed border-line bg-surface p-4 text-sm text-ink-soft">
-        <p className="font-medium text-ink">📎 Đính kèm sách / tài liệu</p>
-        <p className="-mt-2 text-xs text-muted">PDF, EPUB, DOCX, TXT — tối đa {MAX_UPLOAD_MB} MB</p>
+      <FileDrop
+        accept={BOOK_ACCEPT}
+        title="📎 Đính kèm sách / tài liệu"
+        hint={`PDF, EPUB, DOCX, TXT — tối đa ${MAX_UPLOAD_MB} MB`}
+        file={newFile}
+        onFile={pickFile}
+        onReject={setError}
+      >
         {post?.file_path && !newFile && (
-          <label className="flex flex-wrap items-center gap-2">
+          <label className="mt-3 flex flex-wrap items-center gap-2">
             <input type="checkbox" checked={removeFile} onChange={(e) => setRemoveFile(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
             <span className={`break-all ${removeFile ? "line-through" : ""}`}>Hiện tại: {post.file_name}</span>
             <span className="text-red-500">— xoá tệp này</span>
           </label>
         )}
-        <input type="file" accept=".pdf,.epub,.doc,.docx,.txt" className="block w-full text-sm file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-4 file:py-2 file:text-accent"
-          onChange={(e) => { setNewFile(e.target.files?.[0] ?? null); setRemoveFile(false); }} />
-      </div>
+      </FileDrop>
 
       {error && <p className="text-red-500">{error}</p>}
       <div className="flex flex-col-reverse gap-3 sm:flex-row">
