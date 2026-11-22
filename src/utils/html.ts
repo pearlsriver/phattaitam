@@ -37,17 +37,24 @@ const ALLOWED_TAGS = [
 ];
 const ALLOWED_ATTR = ["href", "src", "alt", "target", "rel", "loading"];
 
+/**
+ * Chỉ chấp nhận:
+ * - Ảnh: https:// (không nhận http — tránh ảnh theo dõi không mã hoá)
+ * - Liên kết: https:// http:// mailto: hoặc đường dẫn nội bộ "/..."
+ *   (chặn "//tên-miền-khác" và "/\" — trông như nội bộ nhưng dẫn ra ngoài)
+ */
 function safeUrl(url: string, forImg: boolean): boolean {
-  const u = url.trim().toLowerCase();
-  if (forImg) return u.startsWith("https://") || u.startsWith("http://");
-  return u.startsWith("https://") || u.startsWith("http://") || u.startsWith("mailto:") || u.startsWith("/");
+  const u = url.trim();
+  if (forImg) return /^https:\/\//i.test(u);
+  if (u.startsWith("/") && !u.startsWith("//") && !u.startsWith("/\\")) return true;
+  return /^(https?:\/\/|mailto:)/i.test(u);
 }
 
 let hooked = false;
 
 /**
- * Lọc HTML bằng DOMPurify (thư viện chống XSS chuyên dụng): chỉ giữ thẻ/thuộc tính an toàn,
- * liên kết mở tab mới, ảnh chỉ nhận http(s). Chỉ chạy ở trình duyệt.
+ * Lọc HTML bằng DOMPurify: chỉ giữ thẻ/thuộc tính an toàn,
+ * liên kết mở tab mới, ảnh chỉ nhận https. Chỉ chạy ở trình duyệt.
  */
 export function sanitizeHtml(dirty: string): string {
   if (typeof window === "undefined") return "";

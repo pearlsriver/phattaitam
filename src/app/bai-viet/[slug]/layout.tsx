@@ -13,10 +13,17 @@ function one<T>(v: unknown): T | null {
 /** Thẻ SEO + ảnh/tiêu đề khi chia sẻ link. Bài không công khai: không hiện thông tin, không cho Google lập chỉ mục. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  let s: string;
+  try {
+    s = decodeURIComponent(slug);
+  } catch {
+    return { title: "Bài viết", robots: { index: false, follow: false } };
+  }
+
   const { data: post } = await serverSupabase()
     .from("posts")
     .select("title, excerpt, content, cover_image, tags, author_name, created_at, updated_at, author:profiles(full_name)")
-    .eq("slug", decodeURIComponent(slug))
+    .eq("slug", s)
     .eq("is_published", true)
     .eq("visibility", "public")
     .maybeSingle();

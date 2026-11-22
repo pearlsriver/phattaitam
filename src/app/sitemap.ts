@@ -12,10 +12,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: p === "" ? 1 : 0.8,
   }));
 
+  // Lọc rõ ràng "công khai + đã duyệt" — không chỉ dựa vào RLS
   const [posts, songs, albums] = await Promise.all([
-    sb.from("posts").select("slug, updated_at").eq("is_published", true).limit(5000),
-    sb.from("songs").select("id, updated_at").eq("is_published", true).limit(5000),
-    // Đĩa đơn không có trang riêng → không đưa vào sitemap
+    sb.from("posts").select("slug, updated_at").eq("is_published", true).eq("visibility", "public").limit(5000),
+    sb.from("songs").select("id, updated_at").eq("is_published", true).eq("visibility", "public").limit(5000),
     sb.from("albums").select("id, updated_at").eq("is_solo", false).limit(1000),
   ]);
 

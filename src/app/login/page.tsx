@@ -11,6 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 
 type Mode = "login" | "signup";
 
+/** Mật khẩu tối thiểu — đặt cùng giá trị trong Supabase → Authentication → Password */
+const MIN_PASSWORD = 8;
+
 export default function LoginPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -30,6 +33,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (mode === "signup" && !agree) return setMsg({ type: "err", text: "Bạn cần đồng ý Điều lệ để tạo tài khoản." });
+    if (mode === "signup" && password.length < MIN_PASSWORD) return setMsg({ type: "err", text: `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.` });
     setBusy(true);
     setMsg(null);
     try {
@@ -37,7 +41,7 @@ export default function LoginPage() {
         await signInWithEmail(email, password);
         router.replace("/dashboard");
       } else {
-        const needConfirm = await signUpWithEmail(email, password, name);
+        const needConfirm = await signUpWithEmail(email, password, name.trim().slice(0, 80));
         setMsg({ type: "ok", text: needConfirm ? "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản." : "Đăng ký thành công!" });
       }
     } catch (err) {
@@ -51,7 +55,7 @@ export default function LoginPage() {
     if (!email) return setMsg({ type: "err", text: "Nhập email trước rồi bấm Quên mật khẩu." });
     try {
       await resetPassword(email);
-      setMsg({ type: "ok", text: "Đã gửi email đặt lại mật khẩu." });
+      setMsg({ type: "ok", text: "Nếu email này đã đăng ký, bạn sẽ nhận được thư đặt lại mật khẩu." });
     } catch (err) {
       setMsg({ type: "err", text: err instanceof Error ? err.message : "Có lỗi xảy ra" });
     }
@@ -76,9 +80,12 @@ export default function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        {mode === "signup" && <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Họ và tên / nickname" className="field" />}
-        <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
-        <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu (ít nhất 6 ký tự)" className="field" />
+        {mode === "signup" && <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Họ và tên / nickname" className="field" />}
+        <input required type="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" autoComplete="email" />
+        <input required type="password" minLength={mode === "signup" ? MIN_PASSWORD : undefined} maxLength={128} value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={mode === "signup" ? `Mật khẩu (ít nhất ${MIN_PASSWORD} ký tự)` : "Mật khẩu"} className="field"
+          autoComplete={mode === "signup" ? "new-password" : "current-password"} />
 
         {mode === "signup" && (
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface/60 p-3 text-xs leading-relaxed text-ink-soft">
