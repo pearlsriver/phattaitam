@@ -71,6 +71,7 @@ function Admin() {
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/thanh-vien" className="btn btn-secondary">👥 Thành viên</Link>
           <Link href="/admin/radio" className="btn btn-secondary">📻 Quản lý Radio</Link>
+          <Link href="/admin/tep" className="btn btn-secondary">📁 Quản lý tệp</Link>
           <Link href="/admin/don-dep" className="btn btn-secondary">🧹 Dọn dẹp kho lưu trữ</Link>
         </div>
       </div>
